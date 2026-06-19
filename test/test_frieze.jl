@@ -1,0 +1,156 @@
+@testset "Frieze patterns" begin
+
+    # ─── n = 4 (width 1) ────────────────────────────────────────────────────
+    @testset "n = 4 (A_1 frieze, width 1)" begin
+        f4 = frieze(4)
+        @test f4.n == 4
+        @test f4.quiddity == [2, 1, 2, 1]
+
+        F = f4.entries
+        @test size(F) == (5, 4)
+
+        # Boundary rows
+        @test all(==(0), F[1, :])
+        @test all(==(1), F[2, :])
+        @test all(==(1), F[4, :])
+        @test all(==(0), F[5, :])
+
+        # Single interior row (quiddity = [2,1,2,1])
+        @test F[3, :] == [2, 1, 2, 1]
+
+        # All interior entries are positive
+        for r in 3:3
+            @test all(>(0), F[r, :])
+        end
+
+        @test is_valid(f4)
+    end
+
+    # ─── n = 5 (width 2) ────────────────────────────────────────────────────
+    # Fan quiddity for n=5: (3, 1, 2, 2, 1)
+    # Row 3 (interior): (2, 2, 1, 3, 1) [0-indexed cols shifted by recurrence]
+    @testset "n = 5 (A_2 frieze, width 2)" begin
+        f5 = frieze(5)
+        @test f5.n == 5
+        @test f5.quiddity == [3, 1, 2, 2, 1]
+
+        F = f5.entries
+        @test size(F) == (6, 5)
+
+        # Boundary rows
+        @test all(==(0), F[1, :])
+        @test all(==(1), F[2, :])
+        @test all(==(1), F[5, :])
+        @test all(==(0), F[6, :])
+
+        # Quiddity row (Julia row 3)
+        @test F[3, :] == [3, 1, 2, 2, 1]
+
+        # Interior row (Julia row 4) — computed from the recurrence
+        # f(3, i+1) = (f(2,i)*f(2,i+1) - 1)/f(1,i):
+        #   i=0: (3*1-1)/1=2 → col 2
+        #   i=1: (1*2-1)/1=1 → col 3
+        #   i=2: (2*2-1)/1=3 → col 4
+        #   i=3: (2*1-1)/1=1 → col 5
+        #   i=4: (1*3-1)/1=2 → col 1
+        @test F[4, :] == [2, 2, 1, 3, 1]
+
+        # All interior entries positive
+        for r in 3:4
+            @test all(>(0), F[r, :])
+        end
+
+        @test is_valid(f5)
+    end
+
+    # ─── n = 6 (width 3, A_3 frieze) ────────────────────────────────────────
+    # Fan quiddity for n=6: (4, 1, 2, 2, 2, 1)
+    @testset "n = 6 (A_3 frieze, width 3)" begin
+        f6 = frieze(6)
+        @test f6.n == 6
+        @test f6.quiddity == [4, 1, 2, 2, 2, 1]
+
+        F = f6.entries
+        @test size(F) == (7, 6)
+
+        # Boundary rows
+        @test all(==(0), F[1, :])
+        @test all(==(1), F[2, :])
+        @test all(==(1), F[6, :])
+        @test all(==(0), F[7, :])
+
+        # Quiddity
+        @test F[3, :] == [4, 1, 2, 2, 2, 1]
+
+        # Interior rows (computed earlier by hand)
+        @test F[4, :] == [3, 3, 1, 3, 3, 1]
+        @test F[5, :] == [2, 2, 2, 1, 4, 1]
+
+        # All interior entries positive
+        for r in 3:5
+            @test all(>(0), F[r, :])
+        end
+
+        @test is_valid(f6)
+    end
+
+    # ─── n = 7 (width 4) ────────────────────────────────────────────────────
+    @testset "n = 7 (A_4 frieze, width 4) — positivity and diamond rule" begin
+        f7 = frieze(7)
+        @test f7.n == 7
+        @test f7.quiddity == [5, 1, 2, 2, 2, 2, 1]
+        @test size(f7.entries) == (8, 7)
+
+        F = f7.entries
+        @test all(==(0), F[1, :])
+        @test all(==(1), F[2, :])
+        @test all(==(1), F[7, :])
+        @test all(==(0), F[8, :])
+
+        for r in 3:6
+            @test all(>(0), F[r, :])
+        end
+
+        @test is_valid(f7)
+    end
+
+    # ─── Custom quiddity ─────────────────────────────────────────────────────
+    @testset "Custom quiddity" begin
+        # A well-known symmetric quiddity for n=6: (3, 1, 3, 1, 3, 1)
+        # (Triangulation (1,3,5) of the hexagon — three alternating diagonals)
+        f_sym = frieze([3, 1, 3, 1, 3, 1])
+        @test f_sym.n == 6
+        @test is_valid(f_sym)
+        F = f_sym.entries
+        @test all(>(0), F[3:5, :])
+    end
+
+    # ─── Glide-symmetry: row 3 of n=6 is a cyclic shift of row 5 ─────────────
+    @testset "Glide symmetry (n = 6)" begin
+        f6 = frieze(6)
+        F = f6.entries
+        row3 = F[3, :]
+        row5 = F[5, :]
+        # There should exist some cyclic shift s such that circshift(row5, s) == row3
+        n = 6
+        found = any(circshift(row5, s) == row3 for s in 0:n-1)
+        @test found
+    end
+
+    # ─── Error cases ─────────────────────────────────────────────────────────
+    @testset "Error cases" begin
+        @test_throws ClusterAlgebraError frieze(3)
+        @test_throws ClusterAlgebraError frieze([1, 2, 3])   # length < 4
+        @test_throws ClusterAlgebraError frieze([1, -1, 2, 3])  # non-positive
+    end
+
+    # ─── is_valid on a manually corrupted frieze ─────────────────────────────
+    @testset "is_valid detects violations" begin
+        f5 = frieze(5)
+        F_bad = copy(f5.entries)
+        F_bad[3, 1] += 1   # corrupt one interior entry
+        bad = Frieze(5, f5.quiddity, F_bad)
+        @test !is_valid(bad)
+    end
+
+end
