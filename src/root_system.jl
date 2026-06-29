@@ -199,14 +199,18 @@ function _acyclic_representative(q::Quiver; max_quivers::Int = 30_000)
     _is_acyclic(q) && return q            # fast path: already acyclic
     seen  = Set{Matrix{Int}}()
     queue = Quiver[q]
-    push!(seen, q.B)
+    # Key on the mutable sub-block only: the mutable block mutates independently
+    # of frozen vertices, so this correctly identifies distinct mutable states
+    # while avoiding exponential growth from frozen-vertex interaction terms.
+    _mut_key(qi) = qi.B[1:qi.n_mutable, 1:qi.n_mutable]
+    push!(seen, _mut_key(q))
     while !isempty(queue)
         qi = popfirst!(queue)
         for k in 1:qi.n_mutable
             qk = mutate(qi, k)
-            qk.B ∈ seen && continue
+            _mut_key(qk) ∈ seen && continue
             length(seen) >= max_quivers && return nothing
-            push!(seen, qk.B)
+            push!(seen, _mut_key(qk))
             _is_acyclic(qk) && return qk
             push!(queue, qk)
         end
