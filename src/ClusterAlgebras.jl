@@ -16,6 +16,8 @@ include("mutation_class.jl")
 include("coefficients.jl")
 include("green_sequences.jl")
 include("enumerative.jl")
+include("grassmannian.jl")
+include("symbol_alphabet.jl")
 
 export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
@@ -32,6 +34,8 @@ export is_sign_coherent, is_mutation_finite
 export is_green, is_red, is_all_red, maximal_green_sequences
 export fpolynomials
 export n_cluster_variables, n_clusters, f_vector, h_vector
+export grassmannian, plucker_label, is_plucker_label, plucker_subset, x_coordinates
+export symbol_alphabet, cluster_adjacency_matrix, cluster_adjacent
 
 function plot_quiver end
 function plot_quiver! end
