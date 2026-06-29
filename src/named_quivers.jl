@@ -111,6 +111,11 @@ function Quiver(type::Symbol, n::Int)
     Quiver(B, n, d, string.(1:n))
 end
 
+# ─── Grassmannian quiver ──────────────────────────────────────────────────────
+
+Quiver(type::Symbol, k::Int, n::Int) = Quiver(Val(type), k, n)
+Quiver(::Val{:Grassmannian}, k::Int, n::Int) = _grassmannian_quiver(k, n)
+
 # ─── String constructor ───────────────────────────────────────────────────────
 
 const _DYNKIN_CHAR_MAP = Dict(
