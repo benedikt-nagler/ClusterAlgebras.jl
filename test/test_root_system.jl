@@ -146,14 +146,31 @@ end
 end
 
 @testset "is_affine_type — non-acyclic input stays correct" begin
-    # The affine Ã₂ quiver (3-cycle) is already acyclic in its own right
-    # (each vertex has a net outgoing arrow), so the fast path handles it.
-    # Test a *cyclic* mutation-equivalent that is genuinely affine:
-    # Ã₁ with 2 vertices, Kronecker matrix — still acyclic, so fast path.
+    # Ã₁: Kronecker quiver, acyclic — fast path.
     @test is_affine_type(Quiver([0 2; -2 0]))
+    # Genuinely affine rank 3: an ACYCLIC orientation of the triangle is Ã₂
+    # (the cyclically oriented triangle is instead mutation-equivalent to A₃).
+    q_A2tilde = Quiver([0 1 1; -1 0 1; -1 -1 0])
+    @test is_affine_type(q_A2tilde)
+    @test !is_finite_type(q_A2tilde)
+    # Cyclic mutation of Ã₂ must still be recognized via the BFS path.
+    @test is_affine_type(mutate(q_A2tilde, 2))
     # Confirm finite types are not affine via the non-acyclic path too.
     q_cyc = mutate(Quiver([0 1 0; -1 0 1; 0 -1 0]), 2)
     @test !is_affine_type(q_cyc)
+end
+
+@testset "cartan_type — B/C tie-break is permutation-invariant" begin
+    # Baseline orientation/labeling from the named constructors.
+    @test cartan_type(Quiver(:B, 3)) == (:B, 3)
+    @test cartan_type(Quiver(:C, 3)) == (:C, 3)
+
+    # Vertex order reversed (long/short root relabeled).  A positional
+    # tie-break like d[1] ≥ d[end] misclassifies both of these.
+    B_C3_rev = [0 -1 0; 2 0 -1; 0 1 0]   # reversed C₃, d = (2,1,1)
+    @test cartan_type(Quiver(B_C3_rev, 3, [2, 1, 1])) == (:C, 3)
+    B_B3_rev = [0 -2 0; 1 0 -1; 0 1 0]   # reversed B₃, d = (1,2,2)
+    @test cartan_type(Quiver(B_B3_rev, 3, [1, 2, 2])) == (:B, 3)
 end
 
 @testset "n_clusters / n_cluster_variables — non-acyclic finite-type input" begin

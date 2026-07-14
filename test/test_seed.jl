@@ -55,7 +55,7 @@ end
     q = Quiver(B, 2, [1, 1], ["alpha", "beta"])
     s = Seed(q)
     buf = IOBuffer()
-    show(buf, s)
+    show(buf, MIME"text/plain"(), s)
     out = String(take!(buf))
     @test occursin("alpha", out)
     @test occursin("beta", out)
