@@ -11,6 +11,21 @@ function _mutate_matrix(B::Matrix{Int}, k::Int)
     return B_new
 end
 
+"""
+    mutate(x, k::Int)
+    mutate(x, ks::AbstractVector{Int})
+    mutate(x, label::String)
+
+Mutate a `Quiver` or `Seed` at mutable vertex `k` (Fomin–Zelevinsky matrix
+mutation; for seeds also the exchange relation on cluster variables, and for
+principal-coefficient seeds additionally the C-matrix, y-variables, and
+F-polynomials).  Returns a new object; the input is never modified.
+
+A vector of indices applies the mutations left to right
+(`mutate(x, [1, 2]) == mutate(mutate(x, 1), 2)`).  A string mutates at the
+vertex with that label.  Mutating a frozen vertex throws
+`FrozenVertexMutation`.
+"""
 function mutate(q::Quiver, k::Int)
     n_total = q.n_mutable + q.n_frozen
     (1 <= k <= n_total) || throw(InvalidVertex(k, n_total))

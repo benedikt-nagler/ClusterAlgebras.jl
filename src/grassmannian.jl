@@ -2,12 +2,26 @@
 #
 # Reference: J. Scott, "Grassmannians and Cluster Algebras," Proc. London Math. Soc. 92 (2006).
 #
-# Gr(k,n) has a cluster algebra structure.  The initial seed sits on a
-# (k−1) × (n−k−1) grid of mutable Plücker coordinates, with n frozen
-# boundary (cyclic-interval) Plückers.
+# Initial seed: the "rectangles seed".  Vertices sit on the k × (n−k) grid of
+# rectangle Young diagrams inside the k × (n−k) box, plus one extra vertex for
+# the empty diagram.  The a × b rectangle corresponds to the Plücker coordinate
 #
-# B-matrix (winding number): for k-subsets S, T ⊂ {1,…,n},
-#   B[S,T] = Σ_{a=1}^{n} ([a∈S]·[(a mod n)+1 ∈ T] − [a∈T]·[(a mod n)+1 ∈ S])
+#   I(a,b) = {1, …, k−a} ∪ {k−a+b+1, …, k+b},        I(∅) = {1, …, k}.
+#
+# Mutable vertices: 1 ≤ a ≤ k−1, 1 ≤ b ≤ n−k−1 (interior rectangles).
+# Frozen vertices: full-height (a = k) and full-width (b = n−k) rectangles and
+# the empty diagram — exactly the n cyclic-interval Plückers.
+#
+# Quiver arrows (each unit cell of the grid carries an oriented triangle):
+#   (a,b) → (a,b+1)   (right)
+#   (a,b) → (a+1,b)   (down)
+#   (a+1,b+1) → (a,b) (diagonal)
+#   I(∅) → (1,1)
+# with arrows between two frozen vertices omitted.  Mutation at an interior
+# rectangle then reproduces the three-term Plücker relation
+#   p_{(a,b)} · p′ = p_{(a,b−1)} p_{(a,b+1)} + p_{(a−1,b)} p_{(a+1,b)}-type
+# exchanges (verified against short Plücker relations for small (k,n) and by
+# the numeric minor-substitution oracle in the tests).
 
 # ─── Plücker label helpers ────────────────────────────────────────────────────
 
@@ -15,9 +29,13 @@
     plucker_label(subset) → String
 
 Format a sorted integer vector as a Plücker label, e.g. `[1,3,5]` → `"p_{135}"`.
-Assumes all indices are single-digit (n ≤ 9).
+Indices must be single-digit (1–9): the label format is not parseable otherwise.
 """
-plucker_label(subset::AbstractVector{Int}) = "p_{" * join(sort(subset), "") * "}"
+function plucker_label(subset::AbstractVector{Int})
+    all(i -> 1 <= i <= 9, subset) || throw(InvalidArgument(
+        "plucker_label requires single-digit indices (1–9), got $subset"))
+    return "p_{" * join(sort(subset), "") * "}"
+end
 
 """
     is_plucker_label(s) → Bool
@@ -40,86 +58,63 @@ end
 
 # ─── Internal helpers ─────────────────────────────────────────────────────────
 
-# Winding-number exchange matrix entry for two k-subsets of {1,…,n}.
-function _plucker_B(S::AbstractVector{Int}, T::AbstractVector{Int}, n::Int)
-    Smask = zeros(Bool, n)
-    Tmask = zeros(Bool, n)
-    for i in S; Smask[i] = true; end
-    for i in T; Tmask[i] = true; end
-    b = 0
-    for a in 1:n
-        ap1 = mod1(a + 1, n)
-        b += Int(Smask[a] && Tmask[ap1]) - Int(Tmask[a] && Smask[ap1])
-    end
-    return b
+# Plücker k-subset of the a × b rectangle Young diagram inside the k × (n−k)
+# box.  a = 0 or b = 0 is the empty diagram {1,…,k}.
+function _rectangle_subset(a::Int, b::Int, k::Int)
+    (a == 0 || b == 0) && return collect(1:k)
+    return vcat(collect(1:k-a), collect(k-a+b+1:k+b))
 end
-
-# Plücker k-subset at grid position (i, j) in the (k-1) × (n-k-1) mutable grid.
-#
-# k=2: S(1,j) = {1, j+2}  (one row, formula anchors at 1)
-# k=3: S(i,j) = {i, j+k-1, n+1-j}  (avoids double arrows via wraparound)
-# k≥4: greedy weakly-separated collection (no simple closed form)
-#
-# The k=2 and k=3 formulas return subsets in row-major grid order.
-# The k≥4 path calls _greedy_ws_cluster which returns the full list.
-_mutable_subset_k2(i::Int, j::Int) = [i, j+2]
-_mutable_subset_k3(i::Int, j::Int, n::Int) = sort([i, j+2, n+1-j])
-
-# Known valid initial clusters for Gr(k,n) where k≥4.
-# These were verified computationally: each gives the correct Dynkin type
-# (A_3 and E_6 respectively) and matches Scott 2006.
-const _GR_INITIAL_CLUSTERS = Dict{Tuple{Int,Int}, Vector{Vector{Int}}}(
-    (4, 6) => [[1,2,3,5],[1,2,4,5],[1,3,4,5]],
-    (4, 7) => [[1,2,4,7],[1,3,4,6],[1,3,5,7],[1,4,5,7],[2,3,4,6],[2,3,5,6]],
-)
-
-function _greedy_ws_cluster(k::Int, n::Int)
-    haskey(_GR_INITIAL_CLUSTERS, (k,n)) && return _GR_INITIAL_CLUSTERS[(k,n)]
-    error("No initial cluster implemented for Gr($k,$n) with k≥4. " *
-          "Add an entry to _GR_INITIAL_CLUSTERS.")
-end
-
 
 # Frozen boundary Plücker l: the cyclic k-subset {l, l+1, …, l+k-1} (mod n).
 _boundary_subset(l::Int, k::Int, n::Int) = sort!([mod1(l + m, n) for m in 0:k-1])
 
+# Vertex index of grid position (a, b).  Mutable interior rectangles come
+# first in row-major order; the n frozen vertices follow, ordered by the
+# starting point l of their cyclic interval:
+#   empty diagram        = {1,…,k}              → l = 1
+#   full height (a = k)  = {b+1,…,b+k}          → l = b + 1
+#   full width (b = n−k) = {1,…,k−a}∪{n−a+1,…,n} → l = n − a + 1
+function _gr_index(a::Int, b::Int, k::Int, n::Int)
+    n_mut = (k - 1) * (n - k - 1)
+    (a == 0 || b == 0) && return n_mut + 1
+    a == k     && return n_mut + b + 1
+    b == n - k && return n_mut + n - a + 1
+    return (a - 1) * (n - k - 1) + b
+end
+
+_gr_frozen(a::Int, b::Int, k::Int, n::Int) = a == 0 || b == 0 || a == k || b == n - k
+
 # ─── Quiver constructor ───────────────────────────────────────────────────────
 
 function _grassmannian_quiver(k::Int, n::Int)
+    n <= 9 || throw(InvalidArgument(
+        "Grassmannian quivers are limited to n ≤ 9 (single-digit Plücker labels), got n=$n"))
     n_mut = (k - 1) * (n - k - 1)
     N     = n_mut + n   # mutable + frozen
 
-    # Ordered subsets: mutable (row-major over grid) then frozen (boundary l = 1..n).
+    # Subsets by vertex index (see _gr_index for the ordering).
     subsets = Vector{Vector{Int}}(undef, N)
-    if k == 2
-        idx = 1
-        for i in 1:k-1, j in 1:n-k-1
-            subsets[idx] = _mutable_subset_k2(i, j)
-            idx += 1
-        end
-    elseif k == 3
-        idx = 1
-        for i in 1:k-1, j in 1:n-k-1
-            subsets[idx] = _mutable_subset_k3(i, j, n)
-            idx += 1
-        end
-    else
-        mutable_list = _greedy_ws_cluster(k, n)
-        for idx in 1:n_mut
-            subsets[idx] = mutable_list[idx]
-        end
+    for a in 1:k-1, b in 1:n-k-1
+        subsets[_gr_index(a, b, k, n)] = _rectangle_subset(a, b, k)
     end
-    idx = n_mut + 1
     for l in 1:n
-        subsets[idx] = _boundary_subset(l, k, n)
-        idx += 1
+        subsets[n_mut + l] = _boundary_subset(l, k, n)
     end
 
-    # Full exchange matrix via the winding-number formula.
     B = zeros(Int, N, N)
-    for s in 1:N, t in 1:N
-        B[s, t] = _plucker_B(subsets[s], subsets[t], n)
+    function add_arrow!(a1, b1, a2, b2)   # (a1,b1) → (a2,b2), skip frozen–frozen
+        _gr_frozen(a1, b1, k, n) && _gr_frozen(a2, b2, k, n) && return
+        i, j = _gr_index(a1, b1, k, n), _gr_index(a2, b2, k, n)
+        B[i, j] += 1
+        B[j, i] -= 1
     end
+
+    for a in 1:k, b in 1:n-k
+        b < n - k     && add_arrow!(a, b, a, b + 1)          # right
+        a < k         && add_arrow!(a, b, a + 1, b)          # down
+        a > 1 && b > 1 && add_arrow!(a, b, a - 1, b - 1)     # diagonal
+    end
+    add_arrow!(0, 0, 1, 1)                                   # empty → (1,1)
 
     labels = [plucker_label(subsets[i]) for i in 1:N]
     return Quiver(B, n_mut, ones(Int, n_mut), labels)
@@ -132,10 +127,11 @@ end
 
 Return the initial seed of the Grassmannian cluster algebra for `Gr(k,n)` (Scott 2006).
 
-The seed has `(k-1)*(n-k-1)` mutable cluster variables (interior Plücker
-coordinates arranged on a rectangular grid) and `n` frozen variables (cyclic-
-interval boundary Plückers).  Cluster variables print as `p_S` where `S` is the
-corresponding `k`-subset of `{1,…,n}`.
+The seed is Scott's *rectangles seed*: `(k-1)*(n-k-1)` mutable cluster
+variables (Plücker coordinates of interior rectangle Young diagrams inside the
+`k × (n-k)` box) and `n` frozen variables (cyclic-interval boundary Plückers).
+Cluster variables print as `p_S` where `S` is the corresponding `k`-subset of
+`{1,…,n}`.
 
 The quiver type corresponds to classical Dynkin diagrams for small cases:
 

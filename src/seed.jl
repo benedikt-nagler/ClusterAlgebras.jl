@@ -5,6 +5,19 @@ struct TrivialCoefficients   <: CoefficientKind end
 struct PrincipalCoefficients <: CoefficientKind end
 struct ExtendedCoefficients  <: CoefficientKind end   # reserved for surfaces/physics; not implemented yet
 
+"""
+    Seed(q::Quiver)
+    Seed(q::Quiver, var_names::Vector{String})
+
+A cluster-algebra seed: a `Quiver` together with a cluster of variables living
+in `Frac(ZZ[x₁,…,xₙ])` (one variable per vertex, frozen vertices included).
+The type parameter `K <: CoefficientKind` distinguishes trivial coefficients
+(`Seed(q)`) from principal coefficients (`extend(Seed(q))`, which additionally
+tracks c-/g-vectors, y-variables, and F-polynomials).
+
+Mutate with [`mutate`](@ref); `s[k]` returns the k-th cluster variable, and
+`s.mutation_path` records the mutations applied since construction.
+"""
 struct Seed{K<:CoefficientKind, T<:RingElem, F<:Ring, C} <: AbstractSeed
     quiver::Quiver
     cluster::Vector{T}
