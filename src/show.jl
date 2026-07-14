@@ -4,7 +4,14 @@ catch
     print(io, x)
 end
 
+# Compact one-line form (used inside collections, arrays, etc.)
 function Base.show(io::IO, q::Quiver)
+    n = q.n_mutable + q.n_frozen
+    print(io, "Quiver($n vertices: $(q.n_mutable) mutable, $(q.n_frozen) frozen)")
+end
+
+# Verbose form for the REPL
+function Base.show(io::IO, ::MIME"text/plain", q::Quiver)
     n = q.n_mutable + q.n_frozen
     println(io, "Quiver with $n vertices ($(q.n_mutable) mutable, $(q.n_frozen) frozen)")
     println(io, "Exchange matrix B:")
@@ -31,8 +38,16 @@ end
 
 # ─── Text display for Seed{TrivialCoefficients} ───────────────────────────────
 
+# Compact one-line form (used inside collections, arrays, etc.)
 function Base.show(io::IO, s::Seed{TrivialCoefficients})
-    show(io, s.quiver)
+    n = length(s.cluster)
+    print(io, "Seed($n cluster variables, $(s.quiver.n_mutable) mutable)")
+    isempty(s.mutation_path) || print(io, " after μ$(s.mutation_path)")
+end
+
+# Verbose form for the REPL
+function Base.show(io::IO, ::MIME"text/plain", s::Seed{TrivialCoefficients})
+    show(io, MIME"text/plain"(), s.quiver)
     println(io, "Cluster variables:")
     for (i, x) in enumerate(s.cluster)
         tag = i > s.quiver.n_mutable ? "  [frozen]" : ""
