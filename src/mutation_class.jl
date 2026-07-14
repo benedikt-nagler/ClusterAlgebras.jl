@@ -90,14 +90,14 @@ number of clusters.  Deduplication uses ordered d-vector tuples, which correctly
 separates all seeds for finite types (d-vector conjecture) and is safe up to the
 cutoff for infinite types.
 """
-struct ExchangeGraph
-    seeds     :: Vector{Any}          # elements are Seed objects
+struct ExchangeGraph{S <: AbstractSeed}
+    seeds     :: Vector{S}
     adj       :: Vector{Vector{Int}}  # adj[i][k] = index of μ_k(seeds[i])
     truncated :: Bool
 end
 
 Base.length(eg::ExchangeGraph)           = length(eg.seeds)
-Base.getindex(eg::ExchangeGraph, i::Int) = eg.seeds[i]::Seed
+Base.getindex(eg::ExchangeGraph, i::Int) = eg.seeds[i]
 is_truncated(eg::ExchangeGraph)          = eg.truncated
 
 # Identify a seed by its ordered tuple of d-vectors.
@@ -119,9 +119,9 @@ distinct seeds have been found.
 For finite-type cluster algebras `length(exchange_graph(s))` equals the number
 of clusters (e.g. 5 for A₂, 14 for A₃, 50 for D₄).
 """
-function exchange_graph(s::Seed; max_seeds::Int = 1000)
+function exchange_graph(s::S; max_seeds::Int = 1000) where {S <: Seed}
     seen  = Dict{Any, Int}()
-    seeds = Any[]
+    seeds = S[]
     adj   = Vector{Vector{Int}}()
 
     function _add!(si)
@@ -138,7 +138,7 @@ function exchange_graph(s::Seed; max_seeds::Int = 1000)
 
     while head <= length(queue)
         i  = queue[head]; head += 1
-        si = seeds[i]::Seed
+        si = seeds[i]
 
         for k in 1:si.quiver.n_mutable
             sk  = mutate(si, k)
@@ -165,7 +165,7 @@ function Base.show(io::IO, mc::MutationClass)
 end
 
 function Base.show(io::IO, eg::ExchangeGraph)
-    n = (eg.seeds[1]::Seed).quiver.n_mutable
+    n = eg.seeds[1].quiver.n_mutable
     suffix = eg.truncated ? " (truncated)" : ""
     print(io, "ExchangeGraph: $(length(eg)) seeds, rank $n$suffix")
 end

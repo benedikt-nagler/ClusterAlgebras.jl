@@ -1,12 +1,18 @@
 # ─── PrincipalData ────────────────────────────────────────────────────────────
 
 """
-    PrincipalData{S}
+    PrincipalData{S, P}
 
 Payload for `Seed{PrincipalCoefficients}`.  Tracks:
 - `C`: C-matrix, columns are c-vectors (tropical y-variables).
 - `yring`: the fraction field `Frac(ZZ[y1,…,yn])`.
 - `yvars`: rational y-variables, elements of `yring`.
+- `B0`: the INITIAL mutable exchange matrix (constant along mutation paths).
+- `B_ext`: the CURRENT principal-extended 2n×2n exchange matrix.
+- `fpolys`: the current F-polynomials, elements of `ZZ[y1,…,yn]`.
+
+`B_ext` and `fpolys` are updated incrementally by one recurrence step per
+mutation, so accessors never replay the whole mutation path.
 
 G-vectors (g-matrix) are derived on demand from the cluster variables and
 F-polynomials via the separation formula; they are not stored incrementally
@@ -15,10 +21,13 @@ c-vectors) do not satisfy sign-coherence for.
 
 Constructed via `extend(s::Seed{TrivialCoefficients})`.
 """
-struct PrincipalData{S}
-    C     :: Matrix{Int}
-    yring :: Any          # FracField{<:MPolyRing}
-    yvars :: Vector{S}    # elements of yring
+struct PrincipalData{S, P}
+    C      :: Matrix{Int}
+    yring  :: Any          # FracField{<:MPolyRing}
+    yvars  :: Vector{S}    # elements of yring
+    B0     :: Matrix{Int}  # initial mutable exchange matrix
+    B_ext  :: Matrix{Int}  # current principal-extended matrix (2n × 2n)
+    fpolys :: Vector{P}    # current F-polynomials in ZZ[y1,…,yn]
 end
 
 # ─── extend ───────────────────────────────────────────────────────────────────
@@ -35,11 +44,32 @@ function extend(s::Seed{TrivialCoefficients})
     Ry, ygen = polynomial_ring(ZZ, ["y$i" for i in 1:n])
     yring    = fraction_field(Ry)
     yvars    = yring.(ygen)
-    pd = PrincipalData(C, yring, yvars)
+
+    # Initial mutable exchange matrix: un-mutate the current one along the path.
+    B0 = s.quiver.B[1:n, 1:n]
+    for k in reverse(s.mutation_path); B0 = _mutate_matrix(B0, k); end
+
+    # Principal-coefficient extended matrix at the initial seed, then replay the
+    # path once to obtain the current B_ext and F-polynomials.  From here on,
+    # `mutate` updates both incrementally (one recurrence step per mutation).
+    B_ext = zeros(Int, 2n, 2n)
+    B_ext[1:n, 1:n] = B0
+    for i in 1:n
+        B_ext[n+i, i] =  1
+        B_ext[i, n+i] = -1
+    end
+    fpolys = fill(one(Ry), n)
+    for k in s.mutation_path
+        fpolys = _mutate_fpolys(fpolys, B_ext, ygen, k)
+        B_ext  = _mutate_matrix(B_ext, k)
+    end
+
+    pd = PrincipalData(C, yring, yvars, B0, B_ext, fpolys)
     T  = eltype(s.cluster)
     F  = typeof(s.ring)
     S  = eltype(yvars)
-    return Seed{PrincipalCoefficients, T, F, PrincipalData{S}}(
+    P  = eltype(fpolys)
+    return Seed{PrincipalCoefficients, T, F, PrincipalData{S, P}}(
         s.quiver, s.cluster, s.ring, s.mutation_path, pd)
 end
 
@@ -48,7 +78,36 @@ end
 # ε_k ∈ {+1, -1}: whether the k-th c-vector is non-negative or non-positive.
 # Sign coherence (a theorem) guarantees exactly one case holds; we default to
 # +1 for the zero vector (initial identity diagonal is always positive).
-_epsilon(c::AbstractVector{Int}) = all(>=(0), c) ? 1 : -1
+# A mixed-sign c-vector means the C-matrix recurrence itself is broken, so we
+# error loudly instead of silently returning −1.
+function _epsilon(c::AbstractVector{Int})
+    all(>=(0), c) && return 1
+    all(<=(0), c) && return -1
+    error("sign coherence violated: c-vector $c has mixed signs — " *
+          "this indicates a bug in the C-matrix recurrence")
+end
+
+# One step of the F-polynomial recurrence (FZ-IV Prop. 5.1) at vertex k,
+# using the CURRENT principal-extended matrix B_ext (before mutating it).
+function _mutate_fpolys(F::Vector{P}, B_ext::Matrix{Int}, ygens, k::Int) where {P}
+    n  = length(F)
+    R  = parent(F[1])
+    y_pos = prod(ygens[i]^max( B_ext[n+i, k], 0) for i in 1:n; init=one(R))
+    y_neg = prod(ygens[i]^max(-B_ext[n+i, k], 0) for i in 1:n; init=one(R))
+
+    M_pos = y_pos
+    M_neg = y_neg
+    for j in 1:n
+        j == k && continue
+        b = B_ext[j, k]
+        b > 0 && (M_pos *= F[j]^b)
+        b < 0 && (M_neg *= F[j]^(-b))
+    end
+
+    F′ = copy(F)
+    F′[k] = divexact(M_pos + M_neg, F[k])
+    return F′
+end
 
 function _mutate_C(C::Matrix{Int}, B::Matrix{Int}, k::Int)
     n  = size(C, 1)
@@ -57,7 +116,7 @@ function _mutate_C(C::Matrix{Int}, B::Matrix{Int}, k::Int)
     C′[:, k] = -C[:, k]
     for j in 1:n
         j == k && continue
-        bump = max(εC * B[j, k], 0)
+        bump = max(εC * B[k, j], 0)
         iszero(bump) && continue
         @. C′[:, j] = C[:, j] + bump * C[:, k]
     end
@@ -74,13 +133,20 @@ end
 # for x^{g_k} = x_k / F_k(ŷ)|_{y=1}, which is always a Laurent monomial.
 
 function _gmatrix_and_B0(s::Seed{PrincipalCoefficients})
+    # With frozen vertices, _mutate_cluster includes frozen variables in the
+    # exchange relations, so x_k / F_k(ŷ) built from the mutable block alone is
+    # NOT a Laurent monomial — silently taking its first exponent vector would
+    # produce garbage g-vectors.  Error loudly until a coefficient-aware
+    # separation formula is implemented.  (C-matrix and y-variables remain
+    # well-defined and available for such seeds.)
+    s.quiver.n_frozen == 0 || throw(InvalidArgument(
+        "g-vectors and the separation formula are not implemented for seeds " *
+        "with frozen vertices (n_frozen = $(s.quiver.n_frozen)); " *
+        "c-vectors and y-variables remain available"))
     n     = s.quiver.n_mutable
     n_tot = n + s.quiver.n_frozen
-    path  = s.mutation_path
-    Fps   = fpolynomials(s)
-
-    B0 = s.quiver.B[1:n, 1:n]
-    for kk in reverse(path); B0 = _mutate_matrix(B0, kk); end
+    Fps   = s.coeffs.fpolys
+    B0    = s.coeffs.B0
 
     Fx    = s.ring
     xvars = Fx.(gens(base_ring(Fx)))
@@ -104,15 +170,16 @@ end
 
 Mutate rational y-variables in the universal semifield Frac(ZZ[y₁,…,yₙ]).
 
-Convention (settled by making the tropical-agreement test pass): using
-b_{jk} = B[j, k] (the (j,k) entry of the CURRENT exchange matrix):
+Convention (Fomin–Zelevinsky IV, Prop. 3.9): using b_{kj} = B[k, j] (the
+(k,j) entry of the CURRENT exchange matrix):
 
     y′_k = y_k⁻¹
-    y′_j = y_j · y_k^[b_{jk}]₊ · (1 + y_k)^{-b_{jk}}    for j ≠ k
+    y′_j = y_j · y_k^[b_{kj}]₊ · (1 + y_k)^{-b_{kj}}    for j ≠ k
 
 where [x]₊ = max(x, 0).  The tropicalization of this convention (componentwise
 min of exponents in numerator minus min in denominator) equals the c-vector
-maintained by `_mutate_C` — verified by the full test suite.
+maintained by `_mutate_C`, and the resulting C-matrix satisfies tropical
+duality C = (Gᵀ)⁻¹ in the skew-symmetric case — both covered by tests.
 """
 function _mutate_yvars(yvars::Vector{S}, B::Matrix{Int}, k::Int) where {S}
     n    = length(yvars)
@@ -123,13 +190,13 @@ function _mutate_yvars(yvars::Vector{S}, B::Matrix{Int}, k::Int) where {S}
 
     for j in 1:n
         j == k && continue
-        bjk = B[j, k]          # entry (j, k) of current exchange matrix
-        # y′_j = y_j * y_k^[b_{jk}]_+ * (1 + y_k)^{-b_{jk}}
-        factor = yk^max(bjk, 0)
-        if bjk > 0
-            factor = factor // (1 + yk)^bjk
-        elseif bjk < 0
-            factor = factor * (1 + yk)^(-bjk)
+        bkj = B[k, j]          # entry (k, j) of current exchange matrix
+        # y′_j = y_j * y_k^[b_{kj}]_+ * (1 + y_k)^{-b_{kj}}
+        factor = yk^max(bkj, 0)
+        if bkj > 0
+            factor = factor // (1 + yk)^bkj
+        elseif bkj < 0
+            factor = factor * (1 + yk)^(-bkj)
         end
         ynew[j] = yvars[j] * factor
     end
@@ -149,11 +216,15 @@ function mutate(s::Seed{PrincipalCoefficients}, k::Int)
     pd     = s.coeffs
     C′     = _mutate_C(pd.C, s.quiver.B, k)
     ynew   = _mutate_yvars(pd.yvars, s.quiver.B, k)
-    pd_new = PrincipalData(C′, pd.yring, ynew)
+    ygens  = gens(parent(pd.fpolys[1]))
+    fpolys′ = _mutate_fpolys(pd.fpolys, pd.B_ext, ygens, k)
+    B_ext′  = _mutate_matrix(pd.B_ext, k)
+    pd_new = PrincipalData(C′, pd.yring, ynew, pd.B0, B_ext′, fpolys′)
     T  = eltype(s.cluster)
     F  = typeof(s.ring)
     S  = eltype(ynew)
-    return Seed{PrincipalCoefficients, T, F, PrincipalData{S}}(
+    P  = eltype(fpolys′)
+    return Seed{PrincipalCoefficients, T, F, PrincipalData{S, P}}(
         q_new, cluster_new, s.ring, path_new, pd_new)
 end
 
@@ -218,48 +289,12 @@ Return the F-polynomials of the cluster variables in `s`, as elements of
 The k-th entry is the F-polynomial of the k-th cluster variable. Initial cluster
 variables have F-polynomial 1.
 
+The F-polynomials are maintained incrementally by `mutate` (one recurrence
+step per mutation, see `_mutate_fpolys`), so this accessor is O(1).
+
 See `fpolynomials(::Seed{TrivialCoefficients})` for algorithm documentation.
 """
-function fpolynomials(s::Seed{PrincipalCoefficients})
-    n    = s.quiver.n_mutable
-    path = s.mutation_path
-
-    # Restrict to the mutable block and recover the initial exchange matrix.
-    B_mutable = s.quiver.B[1:n, 1:n]
-    for k in reverse(path)
-        B_mutable = _mutate_matrix(B_mutable, k)
-    end
-
-    # Build the principal-coefficient extended matrix (2n × 2n).
-    B_ext = zeros(Int, 2n, 2n)
-    B_ext[1:n, 1:n] = B_mutable
-    for i in 1:n
-        B_ext[n+i, i] =  1
-        B_ext[i, n+i] = -1
-    end
-
-    R, yvars = polynomial_ring(ZZ, ["y$i" for i in 1:n])
-    F = fill(one(R), n)
-
-    for k in path
-        y_pos = prod(yvars[i]^max( B_ext[n+i, k], 0) for i in 1:n; init=one(R))
-        y_neg = prod(yvars[i]^max(-B_ext[n+i, k], 0) for i in 1:n; init=one(R))
-
-        M_pos = y_pos
-        M_neg = y_neg
-        for j in 1:n
-            j == k && continue
-            b = B_ext[j, k]
-            b > 0 && (M_pos *= F[j]^b)
-            b < 0 && (M_neg *= F[j]^(-b))
-        end
-
-        F[k]  = divexact(M_pos + M_neg, F[k])
-        B_ext = _mutate_matrix(B_ext, k)
-    end
-
-    return F
-end
+fpolynomials(s::Seed{PrincipalCoefficients}) = s.coeffs.fpolys
 
 """
     f_polynomial(s::Seed{PrincipalCoefficients}, k::Int) → MPolyRingElem
@@ -387,8 +422,16 @@ end
 
 # ─── Display for Seed{PrincipalCoefficients} ──────────────────────────────────
 
+# Compact one-line form (used inside collections, arrays, etc.)
 function Base.show(io::IO, s::Seed{PrincipalCoefficients})
-    show(io, s.quiver)
+    n = length(s.cluster)
+    print(io, "Seed($n cluster variables, $(s.quiver.n_mutable) mutable, principal coefficients)")
+    isempty(s.mutation_path) || print(io, " after μ$(s.mutation_path)")
+end
+
+# Verbose form for the REPL
+function Base.show(io::IO, ::MIME"text/plain", s::Seed{PrincipalCoefficients})
+    show(io, MIME"text/plain"(), s.quiver)
     println(io, "Cluster variables:")
     for (i, x) in enumerate(s.cluster)
         tag = i > s.quiver.n_mutable ? "  [frozen]" : ""
@@ -402,12 +445,14 @@ function Base.show(io::IO, s::Seed{PrincipalCoefficients})
         for j in 1:n; print(io, lpad(s.coeffs.C[i, j], 4)); end
         println(io)
     end
-    G = _gmatrix_and_B0(s)[1]
-    println(io, "G-matrix (g-vectors as columns):")
-    for i in 1:n
-        print(io, " ")
-        for j in 1:n; print(io, lpad(G[i, j], 4)); end
-        println(io)
+    if s.quiver.n_frozen == 0
+        G = _gmatrix_and_B0(s)[1]
+        println(io, "G-matrix (g-vectors as columns):")
+        for i in 1:n
+            print(io, " ")
+            for j in 1:n; print(io, lpad(G[i, j], 4)); end
+            println(io)
+        end
     end
 end
 
@@ -416,7 +461,6 @@ function Base.show(io::IO, ::MIME"text/latex", s::Seed{PrincipalCoefficients})
     n_mut = s.quiver.n_mutable
     m     = size(s.coeffs.C, 1)
     B     = s.quiver.B
-    G     = _gmatrix_and_B0(s)[1]
 
     println(io, "\\begin{aligned}")
 
@@ -443,15 +487,18 @@ function Base.show(io::IO, ::MIME"text/latex", s::Seed{PrincipalCoefficients})
         print(io, join(string.(s.coeffs.C[i, :]), " & "))
         i < m && print(io, " \\\\ ")
     end
-    println(io, " \\end{pmatrix} \\\\[6pt]")
-
-    # G-matrix
-    print(io, "  G &= \\begin{pmatrix} ")
-    for i in 1:m
-        print(io, join(string.(G[i, :]), " & "))
-        i < m && print(io, " \\\\ ")
-    end
     print(io, " \\end{pmatrix}")
+
+    # G-matrix (only defined for seeds without frozen vertices)
+    if s.quiver.n_frozen == 0
+        G = _gmatrix_and_B0(s)[1]
+        print(io, " \\\\[6pt]\n  G &= \\begin{pmatrix} ")
+        for i in 1:m
+            print(io, join(string.(G[i, :]), " & "))
+            i < m && print(io, " \\\\ ")
+        end
+        print(io, " \\end{pmatrix}")
+    end
 
     # optional mutation path
     if !isempty(s.mutation_path)

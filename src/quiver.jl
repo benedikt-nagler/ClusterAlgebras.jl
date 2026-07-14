@@ -1,3 +1,18 @@
+"""
+    Quiver(B::Matrix{Int})
+    Quiver(B, n_mutable)
+    Quiver(B, n_mutable, d)
+    Quiver(B, n_mutable, d, labels)
+
+A quiver encoded by a skew-symmetrizable exchange matrix `B` (entry `B[i,j] > 0`
+means `B[i,j]` arrows from vertex `i` to vertex `j`).  Vertices `1:n_mutable`
+are mutable, the rest frozen.  `d` are the positive symmetrizers of the mutable
+block (`d[i]*B[i,j] == -d[j]*B[j,i]`; omit for skew-symmetric quivers), and
+`labels` are display names for the vertices.
+
+Named constructors are also available, e.g. `Quiver(:A, 3)`, `Quiver("D4")`,
+`Quiver(:Grassmannian, 2, 5)`.  Mutate with [`mutate`](@ref).
+"""
 struct Quiver
     B::Matrix{Int}
     n_mutable::Int
@@ -22,7 +37,7 @@ struct Quiver
             rhs = -d[j] * B[j, i]
             lhs == rhs || throw(NotSkewSymmetrizable(i, j, lhs, rhs))
         end
-        new(B, n_mutable, n_total - n_mutable, d, labels)
+        new(copy(B), n_mutable, n_total - n_mutable, copy(d), copy(labels))
     end
 end
 
@@ -40,6 +55,9 @@ Quiver(B::Matrix{Int}, n_mutable::Int, d::Vector{Int}) =
 
 Base.:(==)(a::Quiver, b::Quiver) =
     a.n_mutable == b.n_mutable && a.B == b.B && a.d == b.d && a.labels == b.labels
+
+Base.hash(q::Quiver, h::UInt) =
+    hash(q.labels, hash(q.d, hash(q.B, hash(q.n_mutable, hash(:Quiver, h)))))
 
 nvertices(q::Quiver) = q.n_mutable + q.n_frozen
 labels(q::Quiver)    = q.labels

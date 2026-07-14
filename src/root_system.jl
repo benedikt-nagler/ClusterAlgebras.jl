@@ -193,8 +193,12 @@ function _is_acyclic(q::Quiver)
 end
 
 # BFS over the mutation class of q, returning the first acyclic quiver found.
-# Returns nothing if the class is exhausted without finding one (mutation-
-# infinite types with no acyclic representative) or if the cutoff is hit.
+# Returns `nothing` if the class is exhausted without finding one (a definitive
+# answer: no acyclic representative exists), and `missing` if the search budget
+# is hit first (inconclusive — callers must not silently report `false`).
+# The dedup key is the LABELED mutable block, so the enumeration may revisit
+# vertex-relabeled copies; the budget is sized to absorb that redundancy for
+# the finite types (including E₇/E₈).
 function _acyclic_representative(q::Quiver; max_quivers::Int = 30_000)
     _is_acyclic(q) && return q            # fast path: already acyclic
     seen  = Set{Matrix{Int}}()
@@ -209,13 +213,20 @@ function _acyclic_representative(q::Quiver; max_quivers::Int = 30_000)
         for k in 1:qi.n_mutable
             qk = mutate(qi, k)
             _mut_key(qk) ∈ seen && continue
-            length(seen) >= max_quivers && return nothing
+            length(seen) >= max_quivers && return missing
             push!(seen, _mut_key(qk))
             _is_acyclic(qk) && return qk
             push!(queue, qk)
         end
     end
     return nothing                        # class exhausted, no acyclic rep
+end
+
+# Shared handling of an inconclusive acyclic-representative search.
+function _warn_budget(fn::AbstractString)
+    @warn "$fn: acyclic-representative search budget exhausted before the " *
+          "mutation class was covered; returning false, but this may be a " *
+          "false negative for deep non-acyclic quivers"
 end
 
 # ─── Exact integer determinant (cofactor expansion, n ≤ 8 in practice) ──────
@@ -263,6 +274,7 @@ function is_finite_type(q::Quiver)
     n = q.n_mutable
     n == 0 && return true
     rep = _acyclic_representative(q)
+    rep === missing && (_warn_budget("is_finite_type"); return false)
     rep === nothing && return false
     S = _symmetrized_cartan(rep)
     for k in 1:n
@@ -286,6 +298,7 @@ function is_affine_type(q::Quiver)
     n = q.n_mutable
     n == 0 && return false
     rep = _acyclic_representative(q)
+    rep === missing && (_warn_budget("is_affine_type"); return false)
     rep === nothing && return false
     S = _symmetrized_cartan(rep)
     for k in 1:n-1
@@ -311,9 +324,10 @@ function cartan_type(q::Quiver)
     n >= 1 || throw(InvalidArgument("cartan_type requires n_mutable ≥ 1"))
 
     rep = _acyclic_representative(q)
-    rep === nothing && throw(InvalidArgument(
+    (rep === nothing || rep === missing) && throw(InvalidArgument(
         "cartan_type requires a finite-type quiver; no acyclic mutation " *
-        "representative was found within the search budget"))
+        "representative was found" *
+        (rep === missing ? " within the search budget (inconclusive)" : "")))
 
     # Verify positive definiteness on the acyclic representative.
     S = _symmetrized_cartan(rep)
@@ -335,7 +349,15 @@ function cartan_type(q::Quiver)
     elseif max_bond == 2
         n == 4 && n_pos == 24 && return (:F, 4)
         if n_pos == n^2
-            return rep.d[1] >= rep.d[end] ? (:B, n) : (:C, n)
+            # Distinguish Bₙ from Cₙ by the symmetrizer multiset, which is
+            # permutation-invariant (positional checks like d[1] vs d[end] are
+            # not): Bₙ has d-multiset {big × (n−1), small × 1}, Cₙ the reverse.
+            # B₂ ≅ C₂: the multiset {2,1} is symmetric, so fall back to the
+            # positional convention of the named constructors (long root last
+            # for B, short root last for C).  Either answer is correct.
+            n == 2 && return rep.d[1] >= rep.d[2] ? (:B, 2) : (:C, 2)
+            hi = maximum(rep.d)
+            return count(==(hi), rep.d) == n - 1 ? (:B, n) : (:C, n)
         end
     elseif max_bond == 3
         n == 2 && n_pos == 6 && return (:G, 2)

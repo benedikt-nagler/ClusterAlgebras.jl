@@ -6,9 +6,9 @@
 An SL₂ Conway–Coxeter frieze pattern associated to a triangulated n-gon.
 
 Fields:
-- `n::Int` — polygon size (n ≥ 4); width = n − 3 interior rows.
-- `quiddity::Vector{Int}` — quiddity sequence (c₁, …, cₙ), positive integers.
-- `entries::Matrix{Int}` — (n+1) × n integer matrix, 1-indexed.
+- `n::Int` - polygon size (n ≥ 4); width = n − 3 interior rows.
+- `quiddity::Vector{Int}` - quiddity sequence (c₁, …, cₙ), positive integers.
+- `entries::Matrix{Int}` - (n+1) × n integer matrix, 1-indexed.
   Row j stores mathematical frieze row j−1:
   row 1 = zeros, row 2 = ones, rows 3..n−1 = interior, row n = ones, row n+1 = zeros.
 """
@@ -47,6 +47,17 @@ function _build_frieze_entries(quiddity::Vector{Int})
             F[r + 1, b] = num ÷ den
         end
     end
+
+    # The diamond recurrence alone accepts non-friezes (e.g. quiddity [3,3,3,3]
+    # grows without bound; [1,1,1,1] goes negative).  A genuine Conway–Coxeter
+    # frieze must close up - row n all ones, row n+1 all zeros - with strictly
+    # positive interior rows.
+    all(==(1), F[n, :]) && all(==(0), F[n + 1, :]) || throw(InvalidArgument(
+        "quiddity sequence $(quiddity) does not close into a frieze " *
+        "(row n must be all 1s and row n+1 all 0s)"))
+    all(F[r, i] > 0 for r in 3:n-1 for i in 1:n) || throw(InvalidArgument(
+        "quiddity sequence $(quiddity) produces non-positive interior entries"))
+
     return F
 end
 
@@ -92,8 +103,11 @@ end
 """
     AbstractAlgebra.is_valid(f::Frieze) -> Bool
 
-Return `true` if every unit diamond in `f` satisfies the unimodular rule
-`f(r,i)·f(r,i+1) − f(r−1,i)·f(r+1,i+1) = 1`.
+Return `true` if `f` is a genuine Conway–Coxeter frieze pattern:
+every unit diamond satisfies the unimodular rule
+`f(r,i)·f(r,i+1) − f(r−1,i)·f(r+1,i+1) = 1`, the pattern closes up
+(border rows of 0s and 1s at both top and bottom), and all interior
+entries are strictly positive.
 
 Friezes produced by [`frieze`](@ref) always satisfy this; use `is_valid` to
 verify externally supplied patterns.
@@ -101,6 +115,17 @@ verify externally supplied patterns.
 function AbstractAlgebra.is_valid(f::Frieze)
     n = f.n
     F = f.entries
+
+    # Border rows: top (0s, 1s) and bottom (1s, 0s).  The diamond rule alone
+    # holds for unbounded diamond-recurrence patterns that never close up.
+    all(==(0), F[1, :])     || return false
+    all(==(1), F[2, :])     || return false
+    all(==(1), F[n, :])     || return false
+    all(==(0), F[n + 1, :]) || return false
+
+    # Interior positivity.
+    all(F[r, i] > 0 for r in 3:n-1 for i in 1:n) || return false
+
     # Check diamonds between Julia rows j and j+1 for j = 2..n.
     # In 1-indexed storage, the rule is:
     #   F[j, col] * F[j, nc] - F[j-1, col] * F[j+1, nc] == 1
