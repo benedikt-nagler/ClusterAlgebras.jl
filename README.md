@@ -24,8 +24,19 @@ Cluster algebras arise naturally in total positivity, the representation theory 
 - **Mutation class and exchange graph**: BFS with deduplication; truncation guard for mutation-infinite types
 - **Enumerative invariants**: cluster variable counts, f-vectors, h-vectors for finite-type algebras
 - **Friezes**: SL₂ frieze patterns from triangulated polygons
+- **Grassmannian cluster algebras**: `grassmannian(k, n)` builds the Plücker-coordinate seed of Gr(k,n) (Scott 2006), with Plücker-label helpers and `x_coordinates`
+- **Symbol alphabets**: `symbol_alphabet` enumerates cluster variables as functions of Plücker coordinates (e.g. the 9-letter Gr(4,6) and 42-letter Gr(4,7) alphabets relevant to N=4 SYM amplitudes)
 - **Optional extensions**: graph layout via Graphs.jl + GraphMakie
 
+## Installation
+
+The package is not yet registered in the Julia General registry. Install it directly from the repository:
+
+```julia
+pkg> add https://github.com/benedikt-nagler/ClusterAlgebras.jl
+```
+
+or `pkg> dev <local path>` for a development checkout.
 
 ## Quick start
 
