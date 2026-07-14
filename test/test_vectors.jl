@@ -21,25 +21,25 @@ end
 
     # after μ₁
     es1 = mutate(es, 1)
-    @test cmatrix(es1) == [-1 0; 0 1]
+    @test cmatrix(es1) == [-1 1; 0 1]
     @test gmatrix(es1) == [-1 0; 1 1]
     @test is_sign_coherent(es1)
 
     # after μ₁μ₂
     es12 = mutate(es1, 2)
-    @test cmatrix(es12) == [-1 0; 0 -1]
+    @test cmatrix(es12) == [0 -1; 1 -1]
     @test gmatrix(es12) == [-1 -1; 1 0]
     @test is_sign_coherent(es12)
 
     # after μ₁μ₂μ₁
     es121 = mutate(es12, 1)
-    @test cmatrix(es121) == [1 -1; 0 -1]
+    @test cmatrix(es121) == [0 -1; -1 0]
     @test gmatrix(es121) == [0 -1; -1 0]
     @test is_sign_coherent(es121)
 
     # after μ₁μ₂μ₁μ₂
     es1212 = mutate(es121, 2)
-    @test cmatrix(es1212) == [0 1; -1 1]
+    @test cmatrix(es1212) == [0 1; -1 0]
     @test gmatrix(es1212) == [0 1; -1 0]
     @test is_sign_coherent(es1212)
 
@@ -125,8 +125,13 @@ end
     # short-circuits before the BFS, so the default cutoff is no longer needed.
     @test is_mutation_finite(Quiver(:E, 6))
 
-    # Affine Ã₂ — three-cycle, mutation-finite (affine Dynkin)
-    B_affine = [0 1 -1; -1 0 1; 1 -1 0]
+    # Oriented 3-cycle (mutation-equivalent to A₃) — mutation-finite
+    B_cycle = [0 1 -1; -1 0 1; 1 -1 0]
+    @test is_mutation_finite(Quiver(B_cycle))
+
+    # Genuinely affine Ã₂ — acyclic orientation of the triangle, mutation-finite
+    B_affine = [0 1 1; -1 0 1; -1 -1 0]
+    @test is_affine_type(Quiver(B_affine))
     @test is_mutation_finite(Quiver(B_affine))
 
     # Mutation-infinite: rank-3 quiver with large arrow multiplicities generates
