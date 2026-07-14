@@ -76,15 +76,15 @@ end
 
 @testset "rational y-variables — A₂ after μ₁ (FZ oracle)" begin
     # A₂: B = [[0,1],[-1,0]].
-    # FZ mutation at k=1: y'_1 = y_1^{-1}, y'_2 = y_2*(1+y_1)
-    # (using convention: b_{kj} = B[k,j], i.e. B[1,2] = 1, so y'_2 = y_2*(1+y_1)^1)
+    # FZ-IV mutation at k=1 with b_{kj} = B[k,j]: B[1,2] = 1, so
+    # y'_1 = y_1^{-1}, y'_2 = y_2 * y_1^{[1]₊} * (1+y_1)^{-1} = y_1*y_2/(1+y_1)
     es1   = mutate(extend(Seed(Quiver(:A, 2))), 1)
     ys    = y_variables(es1; semifield=:rational)
     yring = es1.coeffs.yring
     R     = base_ring(yring)
     y1, y2 = gens(R)
     @test ys[1] == inv(yring(y1))
-    @test ys[2] == yring(y2) * (1 + yring(y1))
+    @test ys[2] == yring(y1) * yring(y2) // (1 + yring(y1))
 end
 
 @testset "rational y-variables — μ_k twice is involutive on y" begin
@@ -142,6 +142,33 @@ end
         for k in 1:n; push!(stack, mutate(e, k)); end
     end
     @test length(seen) == 14
+end
+
+# ─── Tropical duality: C = (Gᵀ)⁻¹ ────────────────────────────────────────────
+#
+# For skew-symmetric B, the C- and G-matrices of any seed satisfy Gᵀ·C = I
+# (Nakanishi–Zelevinsky tropical duality).  This pins down the convention of
+# _mutate_C against the independently-computed G-matrix: a Langlands-dual
+# (Bᵀ-pattern) C-matrix fails this identity while still passing the
+# tropical-agreement tests above.
+
+@testset "tropical duality GᵀC = I — A₂ and A₃ exchange graphs" begin
+    for (type_rank, n_seeds) in ((2, 5), (3, 14))
+        n     = type_rank
+        es0   = extend(Seed(Quiver(:A, n)))
+        seen  = Set{Any}()
+        stack = [es0]
+        I_n   = [i == j ? 1 : 0 for i in 1:n, j in 1:n]
+        while !isempty(stack)
+            e = pop!(stack)
+            key = Tuple(sort([denominator_vector(e, k) for k in 1:n]))
+            key ∈ seen && continue
+            push!(seen, key)
+            @test transpose(gmatrix(e)) * cmatrix(e) == I_n
+            for k in 1:n; push!(stack, mutate(e, k)); end
+        end
+        @test length(seen) == n_seeds
+    end
 end
 
 # ─── g-vector = principal grading ────────────────────────────────────────────
@@ -238,6 +265,28 @@ end
         end
     end
     @test length(seen) == 14
+end
+
+# ─── Frozen vertices: g-vectors error loudly, c/y-dynamics still work ────────
+
+@testset "frozen vertices — gmatrix/separation error, c- and y-data available" begin
+    # Minimal repro from the review: 1 mutable + 1 frozen, B = [0 1; -1 0].
+    # x₁' = (1 + x₂)/x₁ contains the frozen variable, so x₁'/F₁(ŷ) is not a
+    # Laurent monomial and no g-vector is defined.
+    q  = Quiver([0 1; -1 0], 1)
+    es = extend(Seed(q))
+
+    @test cvectors(es) == [[1]]
+    @test_throws ClusterAlgebraError gmatrix(es)
+    @test_throws ClusterAlgebraError separation_formula(es, 1)
+
+    es1 = mutate(es, 1)
+    @test cvectors(es1) == [[-1]]
+    ys = y_variables(es1; semifield=:rational)
+    @test length(ys) == 1
+    y1 = gens(base_ring(es1.coeffs.yring))[1]
+    @test ys[1] == inv(es1.coeffs.yring(y1))
+    @test_throws ClusterAlgebraError gmatrix(es1)
 end
 
 # ─── Sign coherence over B₂ and D₄ ──────────────────────────────────────────

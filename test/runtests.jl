@@ -21,6 +21,10 @@ using Aqua
     include("test_enumerative.jl")
     include("test_coefficients.jl")
     include("test_green_sequences.jl")
+    include("test_periodicity.jl")
+    include("test_dt_transformation.jl")
+    include("test_ks_dilog.jl")
     include("test_grassmannian.jl")
     include("test_symbol_alphabet.jl")
+    include("test_makie_ext.jl")
 end
