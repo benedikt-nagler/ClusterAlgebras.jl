@@ -32,4 +32,39 @@ function ClusterAlgebras.plot_quiver!(ax, q::Quiver; kwargs...)
     graphplot!(ax, g; node_color, node_marker, nlabels=q.labels, elabels, kwargs...)
 end
 
+# ─── Exchange / mutation graph ────────────────────────────────────────────────
+
+function _exchange_graph_plot(obj; nlabels, kwargs...)
+    g = SimpleGraph(obj)                       # from ClusterAlgebrasGraphsExt
+    n = nv(g)
+    labs = nlabels === true  ? string.(1:n) :
+           nlabels === false ? nothing       : nlabels
+    p = graphplot(g; node_color = :seagreen, nlabels = labs, kwargs...)
+    hidedecorations!(p.axis)
+    hidespines!(p.axis)
+    p
+end
+
+"""
+    plot_exchange_graph(mc::MutationClass; nlabels = true, kwargs...)
+    plot_exchange_graph(eg::ExchangeGraph; nlabels = true, kwargs...)
+
+Render the mutation graph of `mc` (vertices = quivers) or the exchange graph of
+`eg` (vertices = seeds) as an undirected graph: two vertices are joined when a
+single mutation relates them. For a finite-type `ExchangeGraph` this is the
+1-skeleton of the generalized associahedron.
+
+`nlabels = true` (default) labels each vertex with its 1-based index in the
+class; pass `false` for none, or a vector of custom labels. Extra keywords pass
+through to GraphMakie's `graphplot`. Requires `using Graphs, GraphMakie` and a
+Makie backend.
+"""
+ClusterAlgebras.plot_exchange_graph(mc::ClusterAlgebras.MutationClass;
+                                    nlabels = true, kwargs...) =
+    _exchange_graph_plot(mc; nlabels, kwargs...)
+
+ClusterAlgebras.plot_exchange_graph(eg::ClusterAlgebras.ExchangeGraph;
+                                    nlabels = true, kwargs...) =
+    _exchange_graph_plot(eg; nlabels, kwargs...)
+
 end
