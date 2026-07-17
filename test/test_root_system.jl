@@ -122,6 +122,55 @@ end
     @test_throws ClusterAlgebraError cartan_type(Quiver([0 2 -2; -2 0 2; 2 -2 0]))
 end
 
+# ─── Reducible (disconnected) finite types ────────────────────────────────────
+#
+# Regression for a silent-mislabel bug: cartan_type read the type from rank alone
+# in the simply-laced fall-through, so every rank-6 finite-type quiver that was
+# not A₆/D₆ (including the disconnected A1⊔A5, 16 positive roots) was returned as
+# E₆ (36 positive roots).  A single (type, rank) pair cannot name a direct sum;
+# cartan_types decomposes, and cartan_type now throws on reducible input.
+@testset "cartan_types — reducible decompositions" begin
+    # Block-diagonal direct sum of named Dynkin quivers.
+    direct_sum(types) = begin
+        n = sum(r for (_, r) in types)
+        B = zeros(Int, n, n); o = 0
+        for (t, r) in types
+            B[o+1:o+r, o+1:o+r] = Quiver(t, r).B; o += r
+        end
+        Quiver(B)
+    end
+
+    @test cartan_types(Quiver(:A, 5)) == [(:A, 5)]                  # connected ⇒ singleton
+    @test cartan_types(direct_sum([(:A, 1), (:A, 5)])) == [(:A, 1), (:A, 5)]
+    @test cartan_types(direct_sum([(:A, 3), (:A, 3)])) == [(:A, 3), (:A, 3)]
+    @test cartan_types(direct_sum([(:D, 4), (:A, 2)])) == [(:A, 2), (:D, 4)]  # sorted
+    @test cartan_types(direct_sum([(:A, 1) for _ in 1:6])) == [(:A, 1) for _ in 1:6]
+    @test cartan_types(Quiver(zeros(Int, 0, 0))) == Tuple{Symbol, Int}[]      # empty
+
+    # The bug: A1⊔A5 must NOT be E₆, and cartan_type must refuse a reducible type.
+    @test_throws ClusterAlgebraError cartan_type(direct_sum([(:A, 1), (:A, 5)]))
+
+    # Non-finite-type components still throw.
+    @test_throws ClusterAlgebraError cartan_types(Quiver([0 2 -2; -2 0 2; 2 -2 0]))
+end
+
+@testset "n_clusters / n_cluster_variables — reducible types" begin
+    direct_sum(types) = begin
+        n = sum(r for (_, r) in types)
+        B = zeros(Int, n, n); o = 0
+        for (t, r) in types
+            B[o+1:o+r, o+1:o+r] = Quiver(t, r).B; o += r
+        end
+        Quiver(B)
+    end
+    # n_clusters multiplies over components, n_cluster_variables adds.
+    @test n_clusters(direct_sum([(:A, 1), (:A, 5)])) == 2 * 132          # = 264, not E₆'s 833
+    @test n_clusters(direct_sum([(:A, 3), (:A, 3)])) == 14 * 14
+    @test n_cluster_variables(direct_sum([(:A, 1), (:A, 5)])) ==
+          n_cluster_variables(Quiver(:A, 1)) + n_cluster_variables(Quiver(:A, 5))
+    @test n_clusters(direct_sum([(:A, 1) for _ in 1:6])) == 2^6
+end
+
 # ─── Soundness on non-acyclic quivers (the headline bug fix) ──────────────────
 #
 # Before this fix, is_finite_type / is_affine_type tested only the Cartan
