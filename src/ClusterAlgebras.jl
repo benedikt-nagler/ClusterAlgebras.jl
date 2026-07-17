@@ -2,9 +2,11 @@ module ClusterAlgebras
 
 using AbstractAlgebra
 using PrecompileTools
+using Random
 
 include("errors.jl")
 include("quiver.jl")
+include("canonical_form.jl")
 include("named_quivers.jl")
 include("seed.jl")
 include("mutation.jl")
@@ -21,6 +23,7 @@ include("ks_dilog.jl")
 include("enumerative.jl")
 include("grassmannian.jl")
 include("symbol_alphabet.jl")
+include("random_quiver.jl")
 
 export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
@@ -42,6 +45,12 @@ export fpolynomials
 export n_cluster_variables, n_clusters, f_vector, h_vector
 export grassmannian, plucker_label, is_plucker_label, plucker_subset, x_coordinates
 export symbol_alphabet, cluster_adjacency_matrix, cluster_adjacent
+export canonical_form, canonical_permutation, permute_vertices
+# `is_isomorphic` is AbstractAlgebra's generic function, extended to Quiver in
+# canonical_form.jl; re-exporting the same binding keeps `using ClusterAlgebras,
+# AbstractAlgebra` free of an ambiguity.
+export is_isomorphic
+export random_quiver, random_mutate
 
 function plot_quiver end
 function plot_quiver! end

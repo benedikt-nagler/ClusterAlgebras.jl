@@ -9,6 +9,8 @@ using Aqua
     end
 
     include("test_quiver.jl")
+    include("test_canonical_form.jl")
+    include("test_random_quiver.jl")
     include("test_seed.jl")
     include("test_mutation.jl")
     include("test_named_quivers.jl")
