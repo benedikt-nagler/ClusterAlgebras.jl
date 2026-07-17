@@ -97,7 +97,7 @@ end
     # Kronecker quiver (affine Ã₁): symmetrized Cartan companion is [2 -2; -2 2], det=0
     @test is_affine_type(Quiver([0 2; -2 0]))
 
-    # Markov quiver: indefinite — not affine
+    # Markov quiver: indefinite - not affine
     @test !is_affine_type(Quiver([0 2 -2; -2 0 2; 2 -2 0]))
 
     # Finite types are not affine
@@ -122,31 +122,80 @@ end
     @test_throws ClusterAlgebraError cartan_type(Quiver([0 2 -2; -2 0 2; 2 -2 0]))
 end
 
+# ─── Reducible (disconnected) finite types ────────────────────────────────────
+#
+# Regression for a silent-mislabel bug: cartan_type read the type from rank alone
+# in the simply-laced fall-through, so every rank-6 finite-type quiver that was
+# not A₆/D₆ (including the disconnected A1⊔A5, 16 positive roots) was returned as
+# E₆ (36 positive roots).  A single (type, rank) pair cannot name a direct sum;
+# cartan_types decomposes, and cartan_type now throws on reducible input.
+@testset "cartan_types - reducible decompositions" begin
+    # Block-diagonal direct sum of named Dynkin quivers.
+    direct_sum(types) = begin
+        n = sum(r for (_, r) in types)
+        B = zeros(Int, n, n); o = 0
+        for (t, r) in types
+            B[o+1:o+r, o+1:o+r] = Quiver(t, r).B; o += r
+        end
+        Quiver(B)
+    end
+
+    @test cartan_types(Quiver(:A, 5)) == [(:A, 5)]                  # connected ⇒ singleton
+    @test cartan_types(direct_sum([(:A, 1), (:A, 5)])) == [(:A, 1), (:A, 5)]
+    @test cartan_types(direct_sum([(:A, 3), (:A, 3)])) == [(:A, 3), (:A, 3)]
+    @test cartan_types(direct_sum([(:D, 4), (:A, 2)])) == [(:A, 2), (:D, 4)]  # sorted
+    @test cartan_types(direct_sum([(:A, 1) for _ in 1:6])) == [(:A, 1) for _ in 1:6]
+    @test cartan_types(Quiver(zeros(Int, 0, 0))) == Tuple{Symbol, Int}[]      # empty
+
+    # The bug: A1⊔A5 must NOT be E₆, and cartan_type must refuse a reducible type.
+    @test_throws ClusterAlgebraError cartan_type(direct_sum([(:A, 1), (:A, 5)]))
+
+    # Non-finite-type components still throw.
+    @test_throws ClusterAlgebraError cartan_types(Quiver([0 2 -2; -2 0 2; 2 -2 0]))
+end
+
+@testset "n_clusters / n_cluster_variables - reducible types" begin
+    direct_sum(types) = begin
+        n = sum(r for (_, r) in types)
+        B = zeros(Int, n, n); o = 0
+        for (t, r) in types
+            B[o+1:o+r, o+1:o+r] = Quiver(t, r).B; o += r
+        end
+        Quiver(B)
+    end
+    # n_clusters multiplies over components, n_cluster_variables adds.
+    @test n_clusters(direct_sum([(:A, 1), (:A, 5)])) == 2 * 132          # = 264, not E₆'s 833
+    @test n_clusters(direct_sum([(:A, 3), (:A, 3)])) == 14 * 14
+    @test n_cluster_variables(direct_sum([(:A, 1), (:A, 5)])) ==
+          n_cluster_variables(Quiver(:A, 1)) + n_cluster_variables(Quiver(:A, 5))
+    @test n_clusters(direct_sum([(:A, 1) for _ in 1:6])) == 2^6
+end
+
 # ─── Soundness on non-acyclic quivers (the headline bug fix) ──────────────────
 #
 # Before this fix, is_finite_type / is_affine_type tested only the Cartan
-# companion of the *given* seed — valid only for acyclic quivers.  The oriented
+# companion of the *given* seed - valid only for acyclic quivers.  The oriented
 # 3-cycle below is mutation-equivalent to A₃ (finite type) but has an affine-
 # looking Cartan companion, so the old code returned is_finite_type=false and
-# is_affine_type=true — both wrong.
+# is_affine_type=true - both wrong.
 
-@testset "is_finite_type — non-acyclic input (regression)" begin
+@testset "is_finite_type - non-acyclic input (regression)" begin
     # Oriented 3-cycle: mutate linear A₃ at vertex 2 → still mutation-class A₃
     q_cyc = mutate(Quiver([0 1 0; -1 0 1; 0 -1 0]), 2)
     @test q_cyc.B == [0 -1 1; 1 0 -1; -1 1 0]   # confirm the quiver
-    @test is_finite_type(q_cyc)                   # must be true (was: false — BUG)
-    @test !is_affine_type(q_cyc)                  # must be false (was: true — BUG)
+    @test is_finite_type(q_cyc)                   # must be true (was: false - BUG)
+    @test !is_affine_type(q_cyc)                  # must be false (was: true - BUG)
     @test cartan_type(q_cyc) == (:A, 3)           # must round-trip correctly
 end
 
-@testset "is_finite_type — all acyclic named types still pass" begin
+@testset "is_finite_type - all acyclic named types still pass" begin
     for (t, n) in [(:A,2),(:A,3),(:B,2),(:C,2),(:D,4),(:E,6),(:F,4),(:G,2)]
         @test is_finite_type(Quiver(t, n))
     end
 end
 
-@testset "is_affine_type — non-acyclic input stays correct" begin
-    # Ã₁: Kronecker quiver, acyclic — fast path.
+@testset "is_affine_type - non-acyclic input stays correct" begin
+    # Ã₁: Kronecker quiver, acyclic - fast path.
     @test is_affine_type(Quiver([0 2; -2 0]))
     # Genuinely affine rank 3: an ACYCLIC orientation of the triangle is Ã₂
     # (the cyclically oriented triangle is instead mutation-equivalent to A₃).
@@ -160,7 +209,7 @@ end
     @test !is_affine_type(q_cyc)
 end
 
-@testset "cartan_type — B/C tie-break is permutation-invariant" begin
+@testset "cartan_type - B/C tie-break is permutation-invariant" begin
     # Baseline orientation/labeling from the named constructors.
     @test cartan_type(Quiver(:B, 3)) == (:B, 3)
     @test cartan_type(Quiver(:C, 3)) == (:C, 3)
@@ -173,7 +222,7 @@ end
     @test cartan_type(Quiver(B_B3_rev, 3, [1, 2, 2])) == (:B, 3)
 end
 
-@testset "n_clusters / n_cluster_variables — non-acyclic finite-type input" begin
+@testset "n_clusters / n_cluster_variables - non-acyclic finite-type input" begin
     # These delegate to cartan_type, so they inherit the soundness fix.
     q_cyc = mutate(Quiver([0 1 0; -1 0 1; 0 -1 0]), 2)
     @test n_cluster_variables(q_cyc) == 9    # same as A₃

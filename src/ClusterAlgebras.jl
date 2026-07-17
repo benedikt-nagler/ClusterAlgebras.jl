@@ -29,7 +29,7 @@ export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
 export nvertices, labels, is_frozen
 export cartan_companion, RootSystem, almost_positive_roots
-export is_finite_type, is_affine_type, cartan_type
+export is_finite_type, is_affine_type, cartan_type, cartan_types
 export denominator_vector
 export Frieze, frieze
 export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated

@@ -1,8 +1,8 @@
 # Enumerative invariants of finite-type cluster algebras (Track A: A1).
 #
 # Two independent derivations are provided for each invariant:
-#   Route 1 — closed forms from the root system (Coxeter number + degrees).
-#   Route 2 — combinatorial counts from the exchange-graph BFS.
+#   Route 1 - closed forms from the root system (Coxeter number + degrees).
+#   Route 2 - combinatorial counts from the exchange-graph BFS.
 # They must agree on every finite type; use both in tests as mutual cross-checks.
 
 # ─── Closed forms from the root system ───────────────────────────────────────
@@ -23,13 +23,16 @@ end
     n_cluster_variables(q::Quiver) -> Int
 
 Return the number of cluster variables of the finite-type cluster algebra
-defined by the acyclic quiver `q`.
+defined by the quiver `q`.
 
-Requires `is_finite_type(q)`.  Throws `InvalidArgument` otherwise.
+Requires `is_finite_type(q)`; throws `InvalidArgument` otherwise.  Reducible
+(disconnected) types are handled: the cluster variables of a direct sum are the
+disjoint union of the summands', so the count is **additive** over components.
 """
 function n_cluster_variables(q::Quiver)
-    type, n = cartan_type(q)   # throws if not finite type
-    return n_cluster_variables(RootSystem(type, n))
+    # Additive over irreducible components (almost-positive roots are a disjoint
+    # union).  cartan_types throws unless q is finite type.
+    return sum(n_cluster_variables(RootSystem(t, r)) for (t, r) in cartan_types(q); init = 0)
 end
 
 """
@@ -54,13 +57,17 @@ end
     n_clusters(q::Quiver) -> Int
 
 Return the number of clusters of the finite-type cluster algebra defined by the
-acyclic quiver `q`.
+quiver `q`.
 
-Requires `is_finite_type(q)`.  Throws `InvalidArgument` otherwise.
+Requires `is_finite_type(q)`; throws `InvalidArgument` otherwise.  Reducible
+(disconnected) types are handled: the exchange graph of a direct sum is the
+Cartesian product of the components', so the cluster count is **multiplicative**
+over components (`A1 ⊔ A5` has 2·132 = 264 clusters, not the 833 of E₆).
 """
 function n_clusters(q::Quiver)
-    type, n = cartan_type(q)
-    return n_clusters(RootSystem(type, n))
+    # Multiplicative over irreducible components (Cartesian product of exchange
+    # graphs).  cartan_types throws unless q is finite type.
+    return prod(n_clusters(RootSystem(t, r)) for (t, r) in cartan_types(q); init = 1)
 end
 
 # ─── Combinatorial counts from the exchange graph ────────────────────────────

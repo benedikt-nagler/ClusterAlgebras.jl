@@ -111,12 +111,12 @@ end
 Root system of a finite Dynkin type, computed from the standard Cartan matrix.
 
 Fields:
-- `type::Symbol` — one of `:A, :B, :C, :D, :E, :F, :G`
-- `n::Int` — rank
-- `positive_roots::Vector{Vector{Int}}` — positive roots in simple-root coordinates (sorted)
-- `coxeter_number::Int` — Coxeter number `h`
-- `exponents::Vector{Int}` — fundamental exponents `e_1 ≤ … ≤ e_n` (sorted)
-- `weyl_group_order::Int` — order of the Weyl group
+- `type::Symbol` - one of `:A, :B, :C, :D, :E, :F, :G`
+- `n::Int` - rank
+- `positive_roots::Vector{Vector{Int}}` - positive roots in simple-root coordinates (sorted)
+- `coxeter_number::Int` - Coxeter number `h`
+- `exponents::Vector{Int}` - fundamental exponents `e_1 ≤ … ≤ e_n` (sorted)
+- `weyl_group_order::Int` - order of the Weyl group
 """
 struct RootSystem
     type::Symbol
@@ -195,7 +195,7 @@ end
 # BFS over the mutation class of q, returning the first acyclic quiver found.
 # Returns `nothing` if the class is exhausted without finding one (a definitive
 # answer: no acyclic representative exists), and `missing` if the search budget
-# is hit first (inconclusive — callers must not silently report `false`).
+# is hit first (inconclusive - callers must not silently report `false`).
 # The dedup key is the LABELED mutable block, so the enumeration may revisit
 # vertex-relabeled copies; the budget is sized to absorb that redundancy for
 # the finite types (including E₇/E₈).
@@ -309,33 +309,45 @@ end
 
 # ─── Type recognition ─────────────────────────────────────────────────────────
 
-"""
-    cartan_type(q::Quiver) -> (Symbol, Int)
+# Undirected connected components of the mutable block: vertices i, j are joined
+# whenever an arrow runs between them in either direction.  Finite type is closed
+# under direct sums, and mutation acts block-wise, so the components of an acyclic
+# representative are exactly the irreducible Dynkin summands.
+function _undirected_components(B::AbstractMatrix, n::Int)
+    parent = collect(1:n)
+    root(x) = parent[x] == x ? x : (parent[x] = root(parent[x]))
+    for i in 1:n, j in (i + 1):n
+        (B[i, j] != 0 || B[j, i] != 0) && (parent[root(i)] = root(j))
+    end
+    groups = Dict{Int, Vector{Int}}()
+    for i in 1:n
+        push!(get!(groups, root(i), Int[]), i)
+    end
+    return sort(collect(values(groups)); by = first)
+end
 
-Return the Dynkin type `(type, rank)` of a finite-type quiver.
-`type` is one of `:A, :B, :C, :D, :E, :F, :G` and `rank = q.n_mutable`.
-
-Searches the mutation class for an acyclic representative (up to 30 000 quivers)
-and reads the type from it.  Throws `InvalidArgument` if `q` is not of finite
-type or if the type cannot be determined.
-"""
-function cartan_type(q::Quiver)
-    n = q.n_mutable
-    n >= 1 || throw(InvalidArgument("cartan_type requires n_mutable ≥ 1"))
-
+# Verify `q` is finite type and return an acyclic mutation representative,
+# throwing an informative `InvalidArgument` otherwise.  Shared by `cartan_type`
+# and `cartan_types`.
+function _finite_acyclic_rep(q::Quiver)
     rep = _acyclic_representative(q)
     (rep === nothing || rep === missing) && throw(InvalidArgument(
-        "cartan_type requires a finite-type quiver; no acyclic mutation " *
-        "representative was found" *
+        "requires a finite-type quiver; no acyclic mutation representative was found" *
         (rep === missing ? " within the search budget (inconclusive)" : "")))
-
-    # Verify positive definiteness on the acyclic representative.
     S = _symmetrized_cartan(rep)
-    for k in 1:n
+    for k in 1:q.n_mutable
         _det_int(S[1:k, 1:k]) > 0 || throw(InvalidArgument(
-            "cartan_type requires a finite-type quiver; is_finite_type(q) is false"))
+            "requires a finite-type quiver; is_finite_type(q) is false"))
     end
+    return rep
+end
 
+# Classify a *connected*, acyclic, positive-definite quiver into its irreducible
+# Dynkin type.  Every return is guarded by the exact positive-root count so the
+# fall-through can never misreport (in particular a reducible quiver reaching
+# here - it never should - would throw rather than be labeled Eₙ by rank alone).
+function _connected_cartan_type(rep::Quiver)
+    n        = rep.n_mutable
     A        = cartan_companion(rep)
     n_pos    = length(_compute_positive_roots(A))
     max_bond = maximum(-A[i, j] for i in 1:n, j in 1:n if i != j; init=0)
@@ -343,9 +355,9 @@ function cartan_type(q::Quiver)
     if max_bond <= 1
         n_pos == n * (n + 1) ÷ 2 && return (:A, n)
         n_pos == n * (n - 1)      && return (:D, n)
-        n == 6                    && return (:E, 6)
-        n == 7                    && return (:E, 7)
-        n == 8                    && return (:E, 8)
+        n == 6 && n_pos == 36     && return (:E, 6)
+        n == 7 && n_pos == 63     && return (:E, 7)
+        n == 8 && n_pos == 120    && return (:E, 8)
     elseif max_bond == 2
         n == 4 && n_pos == 24 && return (:F, 4)
         if n_pos == n^2
@@ -365,4 +377,51 @@ function cartan_type(q::Quiver)
 
     throw(InvalidArgument(
         "unable to determine Cartan type (n_mutable=$n, n_pos=$n_pos, max_bond=$max_bond)"))
+end
+
+"""
+    cartan_types(q::Quiver) -> Vector{Tuple{Symbol, Int}}
+
+Return the Dynkin decomposition of a finite-type quiver as a sorted vector of
+`(type, rank)` pairs - one per irreducible component.  Finite type is closed
+under direct sums, so a disconnected quiver is finite type exactly when each of
+its connected components is, and this reports them all: `A1 ⊔ A5` gives
+`[(:A, 1), (:A, 5)]`, the empty quiver gives `[]`.
+
+This is the general form; [`cartan_type`](@ref) is the connected special case.
+Throws `InvalidArgument` if `q` is not of finite type.
+"""
+function cartan_types(q::Quiver)
+    q.n_mutable == 0 && return Tuple{Symbol, Int}[]
+    rep = _finite_acyclic_rep(q)
+    comps = _undirected_components(rep.B, rep.n_mutable)
+    types = [_connected_cartan_type(Quiver(rep.B[c, c])) for c in comps]
+    return sort(types)
+end
+
+"""
+    cartan_type(q::Quiver) -> (Symbol, Int)
+
+Return the Dynkin type `(type, rank)` of a **connected** (irreducible)
+finite-type quiver.  `type` is one of `:A, :B, :C, :D, :E, :F, :G` and
+`rank = q.n_mutable`.
+
+Searches the mutation class for an acyclic representative (up to 30 000 quivers)
+and reads the type from it.  Throws `InvalidArgument` if `q` is not of finite
+type, if the type cannot be determined, or if `q` is **reducible** (a nontrivial
+direct sum) - a single `(type, rank)` pair cannot name a disconnected type, so
+use [`cartan_types`](@ref) for the decomposition in that case.
+"""
+function cartan_type(q::Quiver)
+    n = q.n_mutable
+    n >= 1 || throw(InvalidArgument("cartan_type requires n_mutable ≥ 1"))
+
+    rep = _finite_acyclic_rep(q)
+    comps = _undirected_components(rep.B, n)
+    length(comps) == 1 || throw(InvalidArgument(
+        "cartan_type is only defined for connected (irreducible) finite types; this " *
+        "quiver decomposes into $(length(comps)) components " *
+        "$(sort([_connected_cartan_type(Quiver(rep.B[c, c])) for c in comps])). " *
+        "Use cartan_types(q) for the full decomposition."))
+    return _connected_cartan_type(rep)
 end
