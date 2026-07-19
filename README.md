@@ -118,17 +118,6 @@ summation and transseries; [ExactWKB.jl](https://github.com/benedikt-nagler/Exac
 builds Stokes graphs and bridges to this package via the Iwaki–Nakanishi dictionary, where
 Voros jumps are y-mutations and BPS spectra are maximal green sequences.
 
-## References
-
-- S. Fomin, A. Zelevinsky, *Cluster algebras I: Foundations*, J. Amer. Math. Soc. **15** (2002), 497–529.
-- S. Fomin, A. Zelevinsky, *Y-systems and generalized associahedra*, Ann. Math. **158** (2003), 977–1018.
-- S. Fomin, A. Zelevinsky, *Cluster algebras IV: Coefficients*, Compositio Math. **143** (2007), 112–164.
-- B. Keller, *On cluster theory and quantum dilogarithm identities*, Representations of Algebras and Related Topics, EMS (2011), 85–116.
-- J. Scott, *Grassmannians and cluster algebras*, Proc. London Math. Soc. **92** (2006), 345–380.
-- A. B. Zamolodchikov, *On the thermodynamic Bethe ansatz equations for reflectionless ADE scattering theories*, Phys. Lett. B **253** (1991), 391–394.
-- D. Gaiotto, G. W. Moore, A. Neitzke, *Four-dimensional wall-crossing via three-dimensional field theory*, Comm. Math. Phys. **299** (2010), 163–224.
-- J. Golden, A. B. Goncharov, M. Spradlin, C. Vergu, A. Volovich, *Motivic amplitudes and cluster coordinates*, JHEP **2014**, 91.
-
 ## License
 
 MIT
