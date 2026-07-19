@@ -80,7 +80,7 @@ end
 # +1 for the zero vector (initial identity diagonal is always positive).
 # A mixed-sign c-vector means the C-matrix recurrence itself is broken, so we
 # error loudly instead of silently returning −1.
-function _epsilon(c::AbstractVector{Int})
+function _epsilon(c::AbstractVector{<:Integer})
     all(>=(0), c) && return 1
     all(<=(0), c) && return -1
     error("sign coherence violated: c-vector $c has mixed signs — " *
@@ -109,7 +109,7 @@ function _mutate_fpolys(F::Vector{P}, B_ext::Matrix{Int}, ygens, k::Int) where {
     return F′
 end
 
-function _mutate_C(C::Matrix{Int}, B::Matrix{Int}, k::Int)
+function _mutate_C(C::Matrix{T}, B::Matrix{T}, k::Int) where {T <: Integer}
     n  = size(C, 1)
     εC = _epsilon(C[:, k])
     C′ = copy(C)

@@ -1,4 +1,4 @@
-function _mutate_matrix(B::Matrix{Int}, k::Int)
+function _mutate_matrix(B::Matrix{T}, k::Int) where {T <: Integer}
     n = size(B, 1)
     B_new = copy(B)
     for i in 1:n, j in 1:n
