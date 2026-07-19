@@ -1,4 +1,4 @@
-function _mutate_matrix(B::Matrix{Int}, k::Int)
+function _mutate_matrix(B::Matrix{T}, k::Int) where {T <: Integer}
     n = size(B, 1)
     B_new = copy(B)
     for i in 1:n, j in 1:n
@@ -68,10 +68,10 @@ function mutate(s::Seed{TrivialCoefficients}, k::Int)
     return _seed(q_new, cluster_new, s.ring, path_new)
 end
 
-# Mutation sequence — works for any Seed kind (delegates to the single-Int method)
+# Mutation sequence - works for any Seed kind (delegates to the single-Int method)
 mutate(x::Union{Quiver, Seed}, ks::AbstractVector{Int}) = foldl(mutate, ks; init=x)
 
-# Label-based mutation — works for any Seed kind
+# Label-based mutation - works for any Seed kind
 function mutate(q::Quiver, label::String)
     k = findfirst(==(label), q.labels)
     k === nothing && throw(InvalidArgument(
