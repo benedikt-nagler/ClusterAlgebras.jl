@@ -20,7 +20,7 @@ end
 
 # ─── Backward-compatibility: trivial Seed unchanged ───────────────────────────
 
-@testset "backward compat — Seed{TrivialCoefficients} unchanged" begin
+@testset "backward compat - Seed{TrivialCoefficients} unchanged" begin
     q  = Quiver(:A, 2)
     s  = Seed(q)
     @test s isa Seed{TrivialCoefficients}
@@ -44,7 +44,7 @@ end
     @test s2[2] == (R(x1) + 1) // R(x2)
 end
 
-@testset "backward compat — mutate(Seed, sequence) unchanged" begin
+@testset "backward compat - mutate(Seed, sequence) unchanged" begin
     q = Quiver(:A, 3)
     s = Seed(q)
     # Apply the full 14-seed BFS starting from s; check we get 14 distinct seeds.
@@ -62,7 +62,7 @@ end
 
 # ─── Rational y-dynamics: A₂ ─────────────────────────────────────────────────
 
-@testset "rational y-variables — A₂ initial values" begin
+@testset "rational y-variables - A₂ initial values" begin
     es = extend(Seed(Quiver(:A, 2)))
     ys = y_variables(es; semifield=:rational)
     @test length(ys) == 2
@@ -74,7 +74,7 @@ end
     @test ys[2] == yring(y2)
 end
 
-@testset "rational y-variables — A₂ after μ₁ (FZ oracle)" begin
+@testset "rational y-variables - A₂ after μ₁ (FZ oracle)" begin
     # A₂: B = [[0,1],[-1,0]].
     # FZ-IV mutation at k=1 with b_{kj} = B[k,j]: B[1,2] = 1, so
     # y'_1 = y_1^{-1}, y'_2 = y_2 * y_1^{[1]₊} * (1+y_1)^{-1} = y_1*y_2/(1+y_1)
@@ -87,7 +87,7 @@ end
     @test ys[2] == yring(y1) * yring(y2) // (1 + yring(y1))
 end
 
-@testset "rational y-variables — μ_k twice is involutive on y" begin
+@testset "rational y-variables - μ_k twice is involutive on y" begin
     # After two mutations at the same vertex, the y-variables should return
     # to their original values (involutivity of mutation).
     es  = extend(Seed(Quiver(:A, 2)))
@@ -102,7 +102,7 @@ end
 
 # ─── Tropical vs rational agreement ──────────────────────────────────────────
 
-@testset "tropical-vs-rational agreement — A₂ full exchange graph" begin
+@testset "tropical-vs-rational agreement - A₂ full exchange graph" begin
     es0   = extend(Seed(Quiver(:A, 2)))
     n     = 2
     seen  = Set{Any}()
@@ -123,7 +123,7 @@ end
     @test length(seen) == 5
 end
 
-@testset "tropical-vs-rational agreement — A₃ full exchange graph" begin
+@testset "tropical-vs-rational agreement - A₃ full exchange graph" begin
     es0   = extend(Seed(Quiver(:A, 3)))
     n     = 3
     seen  = Set{Any}()
@@ -152,7 +152,7 @@ end
 # (Bᵀ-pattern) C-matrix fails this identity while still passing the
 # tropical-agreement tests above.
 
-@testset "tropical duality GᵀC = I — A₂ and A₃ exchange graphs" begin
+@testset "tropical duality GᵀC = I - A₂ and A₃ exchange graphs" begin
     for (type_rank, n_seeds) in ((2, 5), (3, 14))
         n     = type_rank
         es0   = extend(Seed(Quiver(:A, n)))
@@ -173,7 +173,7 @@ end
 
 # ─── g-vector = principal grading ────────────────────────────────────────────
 
-@testset "g-vector equals principal grading degree — A₂" begin
+@testset "g-vector equals principal grading degree - A₂" begin
     # g-vector of x_k = degree of x_k under deg(xᵢ) = eᵢ, deg(yⱼ) = -B₀[:,j].
     # Oracle values: G[:,k] = g_vector(s,k) = column k of G-matrix (FZ4 convention).
     q  = Quiver(:A, 2)
@@ -207,7 +207,7 @@ end
 
 # ─── Separation formula round-trip ───────────────────────────────────────────
 
-@testset "separation formula round-trip — A₂" begin
+@testset "separation formula round-trip - A₂" begin
     q  = Quiver(:A, 2)
     s0 = Seed(q)
 
@@ -239,7 +239,7 @@ end
     @test length(seen) == 5
 end
 
-@testset "separation formula round-trip — A₃" begin
+@testset "separation formula round-trip - A₃" begin
     q  = Quiver(:A, 3)
     s0 = Seed(q)
 
@@ -269,7 +269,7 @@ end
 
 # ─── Frozen vertices: g-vectors error loudly, c/y-dynamics still work ────────
 
-@testset "frozen vertices — gmatrix/separation error, c- and y-data available" begin
+@testset "frozen vertices - gmatrix/separation error, c- and y-data available" begin
     # Minimal repro from the review: 1 mutable + 1 frozen, B = [0 1; -1 0].
     # x₁' = (1 + x₂)/x₁ contains the frozen variable, so x₁'/F₁(ŷ) is not a
     # Laurent monomial and no g-vector is defined.
@@ -291,7 +291,7 @@ end
 
 # ─── Sign coherence over B₂ and D₄ ──────────────────────────────────────────
 
-@testset "sign coherence — B₂ full exchange graph" begin
+@testset "sign coherence - B₂ full exchange graph" begin
     # B₂: exchange matrix for B₂ with d = [2, 1]
     # B = [[0, 1], [-2, 0]]
     B_B2 = [0 1; -2 0]
@@ -314,7 +314,7 @@ end
     @test count == 6   # B₂ has 6 distinct seeds
 end
 
-@testset "sign coherence — D₄ full exchange graph" begin
+@testset "sign coherence - D₄ full exchange graph" begin
     q  = Quiver(:D, 4)
     es = extend(Seed(q))
     seen  = Set{Any}()
@@ -332,4 +332,49 @@ end
         end
     end
     @test count == 50   # D₄ has 50 distinct seeds
+end
+
+@testset "ExtendedCoefficients (geometric type)" begin
+    # A₂ with principal (identity) frozen block: mutable 1,2; frozen 3,4.
+    B = [ 0  1 -1  0;
+         -1  0  0 -1;
+          1  0  0  0;
+          0  1  0  0]
+    q  = Quiver(B, 2)                      # n_mutable = 2, n_frozen = 2
+    s0 = Seed(q)
+    ge = extend_geometric(s0)
+    @test ge isa Seed{ExtendedCoefficients}
+
+    R = ge.ring
+    x = ge.cluster                          # [x1, x2, x3, x4]
+
+    # Coefficients read off the frozen block: initial C = I₂.
+    @test y_variables(ge; semifield = :tropical) == [[1, 0], [0, 1]]
+    @test cvectors(ge) == [[1, 0], [0, 1]]
+    @test cmatrix(ge) == [1 0; 0 1]
+    # Geometric y_j = ∏ frozen x^{B}: y₁ = x₃, y₂ = x₄.
+    @test y_variables(ge; semifield = :geometric) == [x[3], x[4]]
+    # Full ŷ over all vertices: ŷ₁ = x₃/x₂, ŷ₂ = x₁·x₄.
+    @test y_hat(ge) == [x[3] // x[2], x[1] * x[4]]
+
+    # Mutate at the mutable vertex 1: cluster exchange incl. frozen sides.
+    g1 = mutate(ge, 1)
+    @test g1 isa Seed{ExtendedCoefficients}
+    @test g1[1] == (R(gens(base_ring(R))[2]) + R(gens(base_ring(R))[3])) // x[1]  # (x₂+x₃)/x₁
+
+    # Coefficient consistency bridge: the geometric c-vectors (frozen block under
+    # matrix mutation) equal the principal C-matrix of the underlying A₂.
+    prin1 = mutate(extend(Seed(Quiver(:A, 2))), 1)
+    @test y_variables(g1; semifield = :tropical) == cvectors(prin1)
+    @test cvectors(g1) == [[-1, 0], [1, 1]]
+
+    # Involution on cluster + quiver (mutation path aside).
+    g11 = mutate(g1, 1)
+    @test g11.cluster == ge.cluster
+    @test g11.quiver  == ge.quiver
+
+    # Guards.
+    @test_throws InvalidArgument extend_geometric(Seed(Quiver(:A, 2)))   # no frozen
+    @test_throws FrozenVertexMutation mutate(ge, 3)                      # frozen vertex
+    @test_throws InvalidArgument y_variables(ge; semifield = :bogus)
 end
