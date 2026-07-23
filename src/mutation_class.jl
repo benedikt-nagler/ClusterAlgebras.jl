@@ -13,8 +13,14 @@ Result of a quiver-level BFS starting from a `Quiver`.  Vertices are distinct
 exchange matrices reachable by mutation; `adj[i][k]` is the index of the quiver
 obtained by mutating `quivers[i]` at mutable vertex `k`.
 
+When produced with `up_to_isomorphism = true`, vertices are quiver *isomorphism
+classes* rather than labeled exchange matrices: each entry of `quivers` is the
+first-seen representative of its class, and `adj` is the *unlabeled* mutation
+graph built from those stored representatives (mutating a representative at `k`
+may land on a relabeling of an already-seen class).
+
 `truncated` is `true` when the BFS was stopped early because the number of
-distinct exchange matrices reached `max_quivers`.
+distinct vertices reached `max_quivers`.
 """
 struct MutationClass
     quivers   :: Vector{Quiver}
@@ -27,18 +33,29 @@ Base.getindex(mc::MutationClass, i::Int) = mc.quivers[i]
 is_truncated(mc::MutationClass)          = mc.truncated
 
 """
-    mutation_class(q::Quiver; max_quivers::Int = 1000) → MutationClass
+    mutation_class(q::Quiver; max_quivers::Int = 1000,
+                   up_to_isomorphism::Bool = false) → MutationClass
 
-BFS over all quivers mutation-equivalent to `q`, deduplicating by exact
-exchange-matrix equality.  Stops early (`truncated = true`) once `max_quivers`
-distinct exchange matrices have been found.
+BFS over all quivers mutation-equivalent to `q`.  Stops early
+(`truncated = true`) once `max_quivers` distinct vertices have been found.
+
+By default vertices are deduplicated by exact exchange-matrix equality, so
+vertex-relabeled copies of the same quiver count as distinct vertices.  With
+`up_to_isomorphism = true` the dedup key is the isomorphism invariant
+`(canonical_form(qi).B, qi.d)` (matching [`is_isomorphic`](@ref)), so each
+isomorphism class is stored once — this gives literature-consistent class sizes.
+The stored representative is the first-seen labeled quiver, so `mc[1] == q`, and
+`adj` is then the unlabeled mutation graph (see [`MutationClass`](@ref)).
 
 For mutation-finite types (e.g. all finite Dynkin types) the BFS terminates
 naturally.  For mutation-infinite types the `max_quivers` cutoff prevents
 the search from hanging.
 """
-function mutation_class(q::Quiver; max_quivers::Int = 1000)
-    seen    = Dict{Matrix{Int}, Int}()
+function mutation_class(q::Quiver; max_quivers::Int = 1000,
+                        up_to_isomorphism::Bool = false)
+    _key(qi) = up_to_isomorphism ? (canonical_form(qi).B, qi.d) : qi.B
+
+    seen    = Dict{Any, Int}()
     quivers = Quiver[]
     adj     = Vector{Vector{Int}}()
 
@@ -46,7 +63,7 @@ function mutation_class(q::Quiver; max_quivers::Int = 1000)
         push!(quivers, qi)
         push!(adj, Int[])
         j = length(quivers)
-        seen[qi.B] = j
+        seen[_key(qi)] = j
         j
     end
 
@@ -59,14 +76,15 @@ function mutation_class(q::Quiver; max_quivers::Int = 1000)
         qi = quivers[i]
 
         for k in 1:qi.n_mutable
-            qk = mutate(qi, k)
-            if !haskey(seen, qk.B)
+            qk  = mutate(qi, k)
+            key = _key(qk)
+            if !haskey(seen, key)
                 length(quivers) >= max_quivers &&
                     return MutationClass(quivers, adj, true)
                 j = _add!(qk)
                 push!(queue, j)
             end
-            push!(adj[i], seen[qk.B])
+            push!(adj[i], seen[key])
         end
     end
 
