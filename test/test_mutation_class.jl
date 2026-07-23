@@ -1,4 +1,4 @@
-@testset "mutation_class — quiver-level BFS" begin
+@testset "mutation_class - quiver-level BFS" begin
 
     # ── A₂: two distinct exchange matrices ─────────────────────────────────────
     mc = mutation_class(Quiver(:A, 2))
@@ -31,7 +31,41 @@
 
 end
 
-@testset "exchange_graph — seed-level BFS" begin
+@testset "mutation_class - up to isomorphism" begin
+
+    # number of distinct isomorphism classes among a labeled mutation class
+    n_iso(mc) = length(unique(q -> (canonical_form(q).B, canonical_form(q).d),
+                              mc.quivers))
+
+    # ── Self-consistency oracle: the iso-dedup count must equal the number of
+    #    distinct canonical forms in the default (labeled) run, and never exceed it.
+    for q in (Quiver(:A, 2), Quiver(:A, 3), Quiver(:D, 4), Quiver([0 2; -2 0]))
+        labeled = mutation_class(q)
+        iso     = mutation_class(q; up_to_isomorphism = true)
+        @test length(iso) == n_iso(labeled)
+        @test length(iso) <= length(labeled)
+    end
+
+    # ── Pinned values: relabelings collapse ────────────────────────────────────
+    # A₂: 1→2 and 1←2 are isomorphic ⇒ one class (labeled count is 2).
+    @test length(mutation_class(Quiver(:A, 2); up_to_isomorphism = true)) == 1
+    # Kronecker [0 2;-2 0] and [0 -2;2 0] are isomorphic ⇒ one class.
+    @test length(mutation_class(Quiver([0 2; -2 0]); up_to_isomorphism = true)) == 1
+
+    # ── Representative identity: first node is still the (unrelabeled) input ─────
+    mc = mutation_class(Quiver(:A, 3); up_to_isomorphism = true)
+    @test mc[1] == Quiver(:A, 3)
+    @test all(all(1 <= j <= length(mc) for j in mc.adj[i]) for i in eachindex(mc.quivers))
+
+    # ── Truncation still fires in the iso branch ────────────────────────────────
+    B_wild = [0 1 -3; -1 0 1; 3 -1 0]
+    mc_inf = mutation_class(Quiver(B_wild); max_quivers = 20, up_to_isomorphism = true)
+    @test is_truncated(mc_inf)
+    @test length(mc_inf) == 20
+
+end
+
+@testset "exchange_graph - seed-level BFS" begin
 
     # ── A₂: 5 seeds (pentagon) ─────────────────────────────────────────────────
     eg2 = exchange_graph(Seed(Quiver(:A, 2)))
