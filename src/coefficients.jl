@@ -530,3 +530,122 @@ function is_mutation_finite(q::Quiver; max_quivers::Int = 10_000)
     is_finite_type(q) && return true
     !is_truncated(mutation_class(q; max_quivers))
 end
+
+# ─── ExtendedCoefficients (geometric type) ────────────────────────────────────
+#
+# A cluster algebra of *geometric type*: the seed's quiver carries m ≥ 1 frozen
+# vertices whose variables generate the coefficient (tropical) semifield.  The
+# extended exchange matrix is the quiver's full (n+m)×(n+m) matrix; its mutable
+# block `1:n` drives cluster mutation while its frozen block `n+1:n+m` tracks the
+# coefficient tropical y-variables (c-vectors) automatically under matrix
+# mutation.  Nothing extra is stored — every coefficient is recomputed from the
+# quiver and cluster, so no incremental state can drift.
+
+"""
+    extend_geometric(s::Seed{TrivialCoefficients}) → Seed{ExtendedCoefficients}
+
+Reinterpret a seed whose quiver has frozen vertices as a cluster algebra of
+**geometric type**: the frozen variables become the coefficients, exposing the
+geometric y-variables ([`y_variables`](@ref)`(s; semifield=:geometric)`), their
+tropical shadow (the coefficient c-vectors), and the full ŷ cross-ratios
+([`y_hat`](@ref)).  Requires `s.quiver.n_frozen ≥ 1`.  The quiver, cluster, ring,
+and mutation path are shared unchanged.
+"""
+function extend_geometric(s::Seed{TrivialCoefficients})
+    s.quiver.n_frozen >= 1 || throw(InvalidArgument(
+        "extend_geometric requires a quiver with frozen (coefficient) vertices; " *
+        "n_frozen = 0. Use extend for principal coefficients."))
+    T = eltype(s.cluster)
+    F = typeof(s.ring)
+    return Seed{ExtendedCoefficients, T, F, Nothing}(
+        s.quiver, s.cluster, s.ring, s.mutation_path, nothing)
+end
+
+"""
+    mutate(s::Seed{ExtendedCoefficients}, k::Int) → Seed{ExtendedCoefficients}
+
+Mutate at mutable vertex `k`.  The cluster and the extended exchange matrix
+(quiver) mutate together; the coefficients follow from the mutated frozen block.
+Mutating a frozen (coefficient) vertex throws `FrozenVertexMutation`.
+"""
+function mutate(s::Seed{ExtendedCoefficients}, k::Int)
+    q_new, cluster_new, path_new = _mutate_cluster(s, k)
+    T = eltype(cluster_new)
+    F = typeof(s.ring)
+    return Seed{ExtendedCoefficients, T, F, Nothing}(
+        q_new, cluster_new, s.ring, path_new, nothing)
+end
+
+# ∏_i base[i]^{e[i]} in the fraction field, negative exponents via division.
+function _laurent_monomial(base::Vector{T}, e::AbstractVector{<:Integer}) where {T}
+    R = parent(base[1])
+    m = one(R)
+    for i in eachindex(e)
+        b = e[i]
+        b > 0 && (m *= base[i]^b)
+        b < 0 && (m //= base[i]^(-b))
+    end
+    return m
+end
+
+"""
+    y_variables(s::Seed{ExtendedCoefficients}; semifield=:geometric)
+
+The coefficient y-variables of a geometric-type seed.
+- `:geometric` (default): `y_j = ∏_{frozen i} x_i^{B[i,j]}` — Laurent monomials in
+  the frozen (coefficient) variables, one per mutable vertex `j`.
+- `:tropical`: the coefficient c-vectors (columns of the frozen block of the
+  extended exchange matrix), as `Vector{Vector{Int}}`.
+"""
+function y_variables(s::Seed{ExtendedCoefficients}; semifield::Symbol=:geometric)
+    n = s.quiver.n_mutable
+    m = s.quiver.n_frozen
+    B = s.quiver.B
+    if semifield === :tropical
+        return [B[n+1:n+m, j] for j in 1:n]
+    elseif semifield === :geometric
+        frozen = s.cluster[n+1:n+m]
+        return [_laurent_monomial(frozen, B[n+1:n+m, j]) for j in 1:n]
+    else
+        throw(InvalidArgument("unknown semifield=$semifield; use :geometric or :tropical"))
+    end
+end
+
+"""
+    y_hat(s::Seed{ExtendedCoefficients}) → Vector
+
+The full geometric ŷ-variables `ŷ_j = ∏_i x_i^{B[i,j]}` over **all** vertices
+(mutable and frozen), one per mutable vertex `j`.  For a triangulated surface
+these are the Thurston shear coordinates (cross-ratios of lambda lengths).
+"""
+function y_hat(s::Seed{ExtendedCoefficients})
+    n = s.quiver.n_mutable
+    B = s.quiver.B
+    return [_laurent_monomial(s.cluster, B[:, j]) for j in 1:n]
+end
+
+"""Return the coefficient C-matrix (frozen block of the extended exchange matrix)."""
+cmatrix(s::Seed{ExtendedCoefficients}) =
+    s.quiver.B[s.quiver.n_mutable+1:end, 1:s.quiver.n_mutable]
+
+"""Return the coefficient c-vectors (columns of [`cmatrix`](@ref))."""
+cvectors(s::Seed{ExtendedCoefficients}) =
+    [cmatrix(s)[:, j] for j in 1:s.quiver.n_mutable]
+
+function Base.show(io::IO, s::Seed{ExtendedCoefficients})
+    n = length(s.cluster)
+    print(io, "Seed($n cluster variables, $(s.quiver.n_mutable) mutable, " *
+              "$(s.quiver.n_frozen) frozen, extended coefficients)")
+    isempty(s.mutation_path) || print(io, " after μ$(s.mutation_path)")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", s::Seed{ExtendedCoefficients})
+    show(io, MIME"text/plain"(), s.quiver)
+    println(io, "Cluster variables:")
+    for (i, x) in enumerate(s.cluster)
+        tag = i > s.quiver.n_mutable ? "  [frozen]" : ""
+        println(io, "  [$i]$tag: $x")
+    end
+    isempty(s.mutation_path) || println(io, "Mutation path: $(s.mutation_path)")
+    println(io, "Coefficient c-vectors (columns): ", cvectors(s))
+end

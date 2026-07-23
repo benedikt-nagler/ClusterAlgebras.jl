@@ -333,3 +333,48 @@ end
     end
     @test count == 50   # D₄ has 50 distinct seeds
 end
+
+@testset "ExtendedCoefficients (geometric type)" begin
+    # A₂ with principal (identity) frozen block: mutable 1,2; frozen 3,4.
+    B = [ 0  1 -1  0;
+         -1  0  0 -1;
+          1  0  0  0;
+          0  1  0  0]
+    q  = Quiver(B, 2)                      # n_mutable = 2, n_frozen = 2
+    s0 = Seed(q)
+    ge = extend_geometric(s0)
+    @test ge isa Seed{ExtendedCoefficients}
+
+    R = ge.ring
+    x = ge.cluster                          # [x1, x2, x3, x4]
+
+    # Coefficients read off the frozen block: initial C = I₂.
+    @test y_variables(ge; semifield = :tropical) == [[1, 0], [0, 1]]
+    @test cvectors(ge) == [[1, 0], [0, 1]]
+    @test cmatrix(ge) == [1 0; 0 1]
+    # Geometric y_j = ∏ frozen x^{B}: y₁ = x₃, y₂ = x₄.
+    @test y_variables(ge; semifield = :geometric) == [x[3], x[4]]
+    # Full ŷ over all vertices: ŷ₁ = x₃/x₂, ŷ₂ = x₁·x₄.
+    @test y_hat(ge) == [x[3] // x[2], x[1] * x[4]]
+
+    # Mutate at the mutable vertex 1: cluster exchange incl. frozen sides.
+    g1 = mutate(ge, 1)
+    @test g1 isa Seed{ExtendedCoefficients}
+    @test g1[1] == (R(gens(base_ring(R))[2]) + R(gens(base_ring(R))[3])) // x[1]  # (x₂+x₃)/x₁
+
+    # Coefficient consistency bridge: the geometric c-vectors (frozen block under
+    # matrix mutation) equal the principal C-matrix of the underlying A₂.
+    prin1 = mutate(extend(Seed(Quiver(:A, 2))), 1)
+    @test y_variables(g1; semifield = :tropical) == cvectors(prin1)
+    @test cvectors(g1) == [[-1, 0], [1, 1]]
+
+    # Involution on cluster + quiver (mutation path aside).
+    g11 = mutate(g1, 1)
+    @test g11.cluster == ge.cluster
+    @test g11.quiver  == ge.quiver
+
+    # Guards.
+    @test_throws InvalidArgument extend_geometric(Seed(Quiver(:A, 2)))   # no frozen
+    @test_throws FrozenVertexMutation mutate(ge, 3)                      # frozen vertex
+    @test_throws InvalidArgument y_variables(ge; semifield = :bogus)
+end

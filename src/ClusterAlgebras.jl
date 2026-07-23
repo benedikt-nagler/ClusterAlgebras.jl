@@ -34,7 +34,7 @@ export denominator_vector
 export Frieze, frieze
 export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated
 export AbstractSeed, CoefficientKind, TrivialCoefficients, PrincipalCoefficients, ExtendedCoefficients
-export extend, cmatrix, gmatrix, cvectors, gvectors
+export extend, extend_geometric, y_hat, cmatrix, gmatrix, cvectors, gvectors
 export c_vector, g_vector, f_polynomial, y_variables, separation_formula, separation_formula_trivial
 export is_sign_coherent, is_mutation_finite
 export is_green, is_red, is_all_red, maximal_green_sequences, mgs_search,
