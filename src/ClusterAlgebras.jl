@@ -12,6 +12,7 @@ include("seed.jl")
 include("mutation.jl")
 include("show.jl")
 include("root_system.jl")
+include("folding.jl")
 include("denominator_vector.jl")
 include("frieze.jl")
 include("mutation_class.jl")
@@ -30,6 +31,7 @@ export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidV
 export nvertices, labels, is_frozen
 export cartan_companion, RootSystem, almost_positive_roots
 export is_finite_type, is_affine_type, cartan_type, cartan_types
+export fold, is_admissible_folding
 export denominator_vector
 export Frieze, frieze
 export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated

@@ -15,6 +15,7 @@ using Aqua
     include("test_mutation.jl")
     include("test_named_quivers.jl")
     include("test_root_system.jl")
+    include("test_folding.jl")
     include("test_denominator_vector.jl")
     include("test_frieze.jl")
     include("test_mutation_class.jl")
