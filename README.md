@@ -1,5 +1,7 @@
 # ClusterAlgebras.jl
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://benedikt-nagler.github.io/ClusterAlgebras.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://benedikt-nagler.github.io/ClusterAlgebras.jl/dev)
 [![CI](https://github.com/benedikt-nagler/ClusterAlgebras.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/benedikt-nagler/ClusterAlgebras.jl/actions/workflows/CI.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
