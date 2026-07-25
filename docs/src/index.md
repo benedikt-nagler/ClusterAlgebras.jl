@@ -66,4 +66,5 @@ is_sign_coherent(sp)           # true (Derksen–Weyman–Zelevinsky)
 Plotting lives in package extensions: load `Graphs`, `GraphMakie` and a Makie backend to
 enable `plot_quiver`, `plot_exchange_graph` and friends.
 
-See the [API](@ref) page for the full list of exported names.
+Start with the [Tutorial: the ``A_2`` pentagon](@ref), or see the [API index](@ref) for the
+full list of exported names.

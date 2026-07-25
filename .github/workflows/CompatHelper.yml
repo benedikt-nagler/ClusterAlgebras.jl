@@ -12,13 +12,16 @@ permissions:
 jobs:
   CompatHelper:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: julia-actions/setup-julia@v2
         with:
           version: "1"
       - name: Install CompatHelper
         run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
+      # subdirs: the root project plus docs/, which pins Documenter. test/ carries no
+      # [compat] bounds, so there is nothing there for CompatHelper to bump.
       - name: Run CompatHelper
-        run: julia -e 'using CompatHelper; CompatHelper.main()'
+        run: julia -e 'using CompatHelper; CompatHelper.main(; subdirs = ["", "docs"])'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

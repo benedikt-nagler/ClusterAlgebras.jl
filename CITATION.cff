@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "ClusterAlgebras.jl: exact computation with cluster algebras in Julia"
+abstract: >-
+  A Julia package for computing with cluster algebras: quivers and seed mutation over
+  fraction fields, principal and geometric coefficients (c-vectors, g-vectors,
+  F-polynomials), root systems and finite-type classification, mutation classes and
+  exchange graphs, maximal green sequences and Donaldson-Thomas transformations, Y-systems
+  and periodicity, friezes, folding, and the cluster structures on Grassmannians.
+type: software
+authors:
+  - given-names: Benedikt
+    family-names: Nagler
+    email: benedikt.nagler@protonmail.com
+license: MIT
+repository-code: "https://github.com/benedikt-nagler/ClusterAlgebras.jl"
+url: "https://benedikt-nagler.github.io/ClusterAlgebras.jl/stable"
+keywords:
+  - cluster algebras
+  - quiver mutation
+  - Fomin-Zelevinsky
+  - maximal green sequences
+  - friezes
+  - root systems
+  - Julia
+version: 0.1.0
+date-released: "2026-07-25"

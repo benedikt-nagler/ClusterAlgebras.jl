@@ -1,3 +1,34 @@
+"""
+    ClusterAlgebras
+
+Exact computation with cluster algebras: quivers, seeds and mutation, coefficients,
+finite-type classification, exchange graphs, green sequences, friezes, and the cluster
+structures on Grassmannians.
+
+Cluster variables live in `Frac(ZZ[x₁,…,xₙ])`, so every result is exact. Quivers and seeds
+are immutable: [`mutate`](@ref) returns a new object.
+
+# Entry points
+
+- [`Quiver`](@ref) - build a quiver from a `B`-matrix, a Dynkin type (`Quiver(:A, 3)`), a
+  type string (`Quiver("D4")`) or an edge list; [`mutate`](@ref) mutates it.
+- [`Seed`](@ref) - a quiver together with its cluster; `mutate(s, k)` or `mutate(s, [1,2,1])`.
+- [`extend`](@ref) / [`extend_geometric`](@ref) - attach principal or geometric coefficients,
+  giving [`cmatrix`](@ref), [`gmatrix`](@ref), [`f_polynomial`](@ref) and
+  [`separation_formula`](@ref).
+- [`is_finite_type`](@ref), [`cartan_type`](@ref), [`n_cluster_variables`](@ref) -
+  classification and counting.
+- [`mutation_class`](@ref), [`exchange_graph`](@ref) - the combinatorics of all seeds.
+- [`maximal_green_sequences`](@ref), [`dt_transformation`](@ref) - green sequences and the
+  Donaldson–Thomas transformation.
+- [`grassmannian`](@ref), [`symbol_alphabet`](@ref) - Grassmannian seeds and their symbol
+  alphabets.
+
+Plotting (`plot_quiver`, `plot_exchange_graph`, `plot_frieze`, …) lives in package
+extensions: load `Graphs`, `GraphMakie` and a Makie backend to enable it.
+
+The manual is at <https://benedikt-nagler.github.io/ClusterAlgebras.jl/>.
+"""
 module ClusterAlgebras
 
 using AbstractAlgebra

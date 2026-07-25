@@ -15,7 +15,19 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
-        "API" => "api.md",
+        "Tutorial" => "tutorial.md",
+        "Manual" => [
+            "Quivers" => "quivers.md",
+            "Seeds and mutation" => "seeds.md",
+            "Coefficients" => "coefficients.md",
+            "Types and classification" => "classification.md",
+            "Mutation classes" => "classes.md",
+            "Green sequences and DT" => "green.md",
+            "Friezes" => "friezes.md",
+            "Grassmannians" => "grassmannian.md",
+        ],
+        "Errors" => "errors.md",
+        "API index" => "api.md",
     ],
     checkdocs = :exports,
 )

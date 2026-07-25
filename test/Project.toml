@@ -2,7 +2,6 @@
 AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
 Aqua            = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CairoMakie      = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-ClusterAlgebras = "8a79f08c-43aa-40ef-a276-b8dea658c9b1"
 GraphMakie      = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 Graphs          = "86223c79-3864-5bf0-83f7-82e725a168b6"
 Random          = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
