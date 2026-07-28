@@ -1,5 +1,6 @@
 # ClusterAlgebras.jl
 
+[![Version](https://juliahub.com/docs/General/ClusterAlgebras/stable/version.svg)](https://juliahub.com/ui/Packages/General/ClusterAlgebras)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://benedikt-nagler.github.io/ClusterAlgebras.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://benedikt-nagler.github.io/ClusterAlgebras.jl/dev)
 [![CI](https://github.com/benedikt-nagler/ClusterAlgebras.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/benedikt-nagler/ClusterAlgebras.jl/actions/workflows/CI.yml)
@@ -25,10 +26,10 @@ sequences - is usable on its own.
 
 ## Installation
 
-Not yet registered in General. From the Julia REPL:
+From the Julia REPL:
 
 ```julia
-pkg> add https://github.com/benedikt-nagler/ClusterAlgebras.jl
+pkg> add ClusterAlgebras
 ```
 
 Requires Julia 1.10 or later.

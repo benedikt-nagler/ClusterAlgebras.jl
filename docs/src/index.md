@@ -38,10 +38,10 @@ returns a new seed, so a mutation path is a value you can keep, compare and repl
 
 ## Installation
 
-Not yet registered in General. From the Julia REPL:
+From the Julia REPL:
 
 ```julia
-pkg> add https://github.com/benedikt-nagler/ClusterAlgebras.jl
+pkg> add ClusterAlgebras
 ```
 
 Requires Julia 1.10 or later.
