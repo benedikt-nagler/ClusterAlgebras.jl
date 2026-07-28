@@ -33,3 +33,7 @@ jobs:
       - uses: JuliaRegistries/TagBot@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Push the tag over the deploy key, not GITHUB_TOKEN: a tag pushed with
+          # GITHUB_TOKEN does not trigger other workflows, so Documenter's `tags: v*`
+          # trigger would never fire and the `stable` docs would never be built.
+          ssh: ${{ secrets.DOCUMENTER_KEY }}
