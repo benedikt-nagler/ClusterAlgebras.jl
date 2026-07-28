@@ -29,5 +29,7 @@ using Aqua
     include("test_ks_dilog.jl")
     include("test_grassmannian.jl")
     include("test_symbol_alphabet.jl")
+    include("test_mutation_type.jl")
+    include("test_interop.jl")
     include("test_makie_ext.jl")
 end

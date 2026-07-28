@@ -25,6 +25,7 @@ makedocs(;
             "Green sequences and DT" => "green.md",
             "Friezes" => "friezes.md",
             "Grassmannians" => "grassmannian.md",
+            "Interchange formats" => "interop.md",
         ],
         "Errors" => "errors.md",
         "API index" => "api.md",

@@ -56,12 +56,15 @@ include("enumerative.jl")
 include("grassmannian.jl")
 include("symbol_alphabet.jl")
 include("random_quiver.jl")
+include("mutation_type.jl")
+include("interop.jl")
 
 export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
 export nvertices, labels, is_frozen
 export cartan_companion, RootSystem, almost_positive_roots
 export is_finite_type, is_affine_type, cartan_type, cartan_types
+export MutationType, mutation_type, mutation_types
 export fold, is_admissible_folding
 export denominator_vector
 export Frieze, frieze
@@ -85,6 +88,7 @@ export canonical_form, canonical_permutation, permute_vertices
 # AbstractAlgebra` free of an ambiguity.
 export is_isomorphic
 export random_quiver, random_mutate
+export to_dig6, from_dig6, to_qmu, from_qmu, write_qmu, read_qmu
 
 function plot_quiver end
 function plot_quiver! end
