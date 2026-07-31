@@ -45,6 +45,8 @@ include("show.jl")
 include("root_system.jl")
 include("folding.jl")
 include("denominator_vector.jl")
+include("greedy.jl")
+include("bounds.jl")
 include("frieze.jl")
 include("mutation_class.jl")
 include("coefficients.jl")
@@ -58,6 +60,7 @@ include("symbol_alphabet.jl")
 include("random_quiver.jl")
 include("mutation_type.jl")
 include("interop.jl")
+include("block_decomposition.jl")
 
 export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
@@ -65,8 +68,14 @@ export nvertices, labels, is_frozen
 export cartan_companion, RootSystem, almost_positive_roots
 export is_finite_type, is_affine_type, cartan_type, cartan_types
 export MutationType, mutation_type, mutation_types
+export Block, FST_BLOCKS, BlockDecomposition, block_decomposition, reassemble
+export is_block_decomposable, is_surface_type
 export fold, is_admissible_folding
 export denominator_vector
+export greedy_coefficients, greedy_element
+export is_acyclic, is_coprime, has_full_rank, is_laurent, in_upper_bound
+export lower_bound_generators, upper_bound_generators, standard_monomials
+export lower_bound_expansion, BoundCertificate, bound_certificate
 export Frieze, frieze
 export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated
 export AbstractSeed, CoefficientKind, TrivialCoefficients, PrincipalCoefficients, ExtendedCoefficients
