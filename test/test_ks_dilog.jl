@@ -51,7 +51,7 @@ using ClusterAlgebras
 
     # ─── Charges are positive roots; Ω(γ) = 1 ────────────────────────────────
     @testset "charges are positive roots, Ω = 1" begin
-        for (type, n) in ((:A, 2), (:A, 3))
+        for (type, n) in ((:A, 2), (:A, 3), (:B, 2), (:G, 2))
             q     = Quiver(type, n)
             roots = Set(RootSystem(type, n).positive_roots)
             for seq in maximal_green_sequences(extend(Seed(q)))
@@ -87,5 +87,62 @@ using ClusterAlgebras
         # Truncation degree must be positive.
         w = quantum_dilog_word(q, mgs[1])
         @test_throws InvalidArgument ks_dilog_product(w; truncation_degree = 0)
+    end
+
+    # ─── Skew-symmetrizable quivers: Λ = −D·B and the q^{d_k} weighting ───────
+    # Λ = Bᵀ would be a skew form only for skew-symmetric B (for B₂ it is
+    # [0 -2; 1 0], for G₂ [0 -3; 1 0], neither skew).  −D·B is skew for every
+    # skew-symmetrizable B and equals Bᵀ when d ≡ 1, so the skew-symmetric
+    # conventions above are untouched.
+    @testset "skew form is −D·B, back-compatible on d ≡ 1" begin
+        for (letter, rank) in ((:A, 2), (:A, 3), (:B, 2), (:G, 2), (:C, 3))
+            q   = Quiver(letter, rank)
+            n   = q.n_mutable
+            Bm  = q.B[1:n, 1:n]
+            seq = first(maximal_green_sequences(extend(Seed(q))))
+            w   = quantum_dilog_word(q, seq)
+            @test w.skew == -permutedims(w.skew)                  # always skew
+            @test w.skew == [-q.d[i] * Bm[i, j] for i in 1:n, j in 1:n]
+            @test w.weights == [q.d[k] for k in seq]
+            if all(==(1), q.d)
+                @test w.skew == permutedims(Bm)                   # the old form
+                @test all(==(1), w.weights)
+            end
+        end
+        # The weighting is not decorative: it is non-trivial exactly here, and
+        # dropping it breaks the invariance oracles below already for B₂.
+        for (letter, rank) in ((:B, 2), (:G, 2))
+            q = Quiver(letter, rank)
+            @test !all(==(1),
+                       quantum_dilog_word(q,
+                           first(maximal_green_sequences(extend(Seed(q))))).weights)
+        end
+    end
+
+    # ─── B₂ hexagon and G₂ octagon identities ────────────────────────────────
+    # The non-simply-laced analogues of the A₂ pentagon: the two maximal green
+    # sequences have lengths 2 and 4 (B₂) resp. 2 and 6 (G₂), and the weighted
+    # products agree.
+    @testset "B₂ hexagon / G₂ octagon identities" begin
+        for (letter, rank, lengths, trunc) in ((:B, 2, [2, 4], 8),
+                                               (:G, 2, [2, 6], 8))
+            q   = Quiver(letter, rank)
+            mgs = sort(maximal_green_sequences(extend(Seed(q))); by = length)
+            @test length.(mgs) == lengths
+            products = [ks_dilog_product(quantum_dilog_word(q, seq);
+                                         truncation_degree = trunc) for seq in mgs]
+            @test all(p == products[1] for p in products)
+            @test !isempty(products[1])
+        end
+    end
+
+    # ─── C₃: full wall-crossing invariance, skew-symmetrizable ───────────────
+    @testset "C₃ wall-crossing invariance" begin
+        q   = Quiver(:C, 3)
+        mgs = maximal_green_sequences(extend(Seed(q)))
+        @test length(mgs) == 14
+        products = [ks_dilog_product(quantum_dilog_word(q, seq);
+                                     truncation_degree = 4) for seq in mgs]
+        @test all(p == products[1] for p in products)
     end
 end

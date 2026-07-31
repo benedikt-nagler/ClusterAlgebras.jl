@@ -33,17 +33,18 @@ function mutate(q::Quiver, k::Int)
     return Quiver(_mutate_matrix(q.B, k), q.n_mutable, q.d, q.labels)
 end
 
-# Helper: validate k and compute the new quiver, cluster, and path for any Seed.
-function _mutate_cluster(s::Seed, k::Int)
+# The two monomials of the exchange relation at vertex k,
+#
+#   x_k x_k' = P_k = ∏_{B[i,k]>0} x_i^{B[i,k]}  +  ∏_{B[i,k]<0} x_i^{−B[i,k]},
+#
+# the product running over all vertices, frozen included (so for a seed with
+# coefficients each monomial carries its tropical coefficient p_k^± as the
+# frozen part).  Shared by mutation and by `bounds.jl`, which needs P_k
+# without performing the mutation.
+function _exchange_monomials(s::Seed, k::Int)
+    B       = s.quiver.B
     n_total = s.quiver.n_mutable + s.quiver.n_frozen
-    (1 <= k <= n_total)      || throw(InvalidVertex(k, n_total))
-    k <= s.quiver.n_mutable  || throw(FrozenVertexMutation(k, s.quiver.n_mutable))
 
-    B    = s.quiver.B
-
-    q_new = Quiver(_mutate_matrix(B, k), s.quiver.n_mutable, s.quiver.d, s.quiver.labels)
-
-    # Exchange relation: x_k' = (∏_{B[i,k]>0} x_i^{B[i,k]} + ∏_{B[i,k]<0} x_i^{-B[i,k]}) / x_k
     pos = one(s.cluster[k])
     neg = one(s.cluster[k])
     for i in 1:n_total
@@ -55,6 +56,20 @@ function _mutate_cluster(s::Seed, k::Int)
             neg *= s.cluster[i]^(-b)
         end
     end
+    return pos, neg
+end
+
+# Helper: validate k and compute the new quiver, cluster, and path for any Seed.
+function _mutate_cluster(s::Seed, k::Int)
+    n_total = s.quiver.n_mutable + s.quiver.n_frozen
+    (1 <= k <= n_total)      || throw(InvalidVertex(k, n_total))
+    k <= s.quiver.n_mutable  || throw(FrozenVertexMutation(k, s.quiver.n_mutable))
+
+    B    = s.quiver.B
+
+    q_new = Quiver(_mutate_matrix(B, k), s.quiver.n_mutable, s.quiver.d, s.quiver.labels)
+
+    pos, neg = _exchange_monomials(s, k)
 
     cluster_new = copy(s.cluster)
     cluster_new[k] = (pos + neg) / s.cluster[k]

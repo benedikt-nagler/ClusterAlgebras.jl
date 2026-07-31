@@ -16,6 +16,8 @@ using Aqua
     include("test_named_quivers.jl")
     include("test_root_system.jl")
     include("test_folding.jl")
+    include("test_greedy.jl")
+    include("test_bounds.jl")
     include("test_denominator_vector.jl")
     include("test_frieze.jl")
     include("test_mutation_class.jl")
@@ -31,5 +33,6 @@ using Aqua
     include("test_symbol_alphabet.jl")
     include("test_mutation_type.jl")
     include("test_interop.jl")
+    include("test_block_decomposition.jl")
     include("test_makie_ext.jl")
 end
