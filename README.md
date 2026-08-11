@@ -7,8 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Exact computation with cluster algebras in Julia: quivers and seed mutation, coefficient
-systems and c-/g-vectors, finite-type classification, mutation classes and exchange graphs,
-green sequences and DT invariants, friezes, and the cluster structures on Grassmannians.
+systems and c-/g-vectors, finite-type and mutation-type classification, mutation classes and
+exchange graphs, green sequences and DT invariants, upper and lower bounds, the rank-2 greedy
+basis, friezes, and the cluster structures on Grassmannians.
 
 A cluster algebra is generated combinatorially. From a *seed* - a cluster
 $(x_1, \ldots, x_n)$ of rational functions together with a skew-symmetrizable integer matrix
@@ -45,8 +46,13 @@ s2 = mutate(s, [1, 2, 1])      # mutate along a sequence
 
 is_finite_type(q)              # true
 cartan_type(q)                 # (:A, 3)
+mutation_type(q)               # A3 - names the whole mutation class, finite or not
 n_cluster_variables(q)         # 9
 length(mutation_class(q))      # 14
+
+mutation_type(Quiver([0 2; -2 0]))   # A(1,1)^(1), the Kronecker quiver
+is_surface_type(Quiver(:A, 3))       # true - it triangulates a hexagon
+is_surface_type(Quiver(:E, 6))       # false
 ```
 
 Principal coefficients carry the c-/g-vector and F-polynomial data:
@@ -68,14 +74,28 @@ is_sign_coherent(sp)           # true (Derksen–Weyman–Zelevinsky)
 matrix, an edge list, or a Dynkin name. Mutation at a vertex, a label, or along a sequence,
 plus `verify_mutation_sequence` and `to_dot`.
 
-**Coefficients.** Trivial, principal and general extended systems as a type parameter on
-`Seed`, so one `mutate` covers all three. C- and G-matrices, F-polynomials, rational and
-tropical y-variables, `y_hat`, the separation formula, denominator vectors.
+**Coefficients.** Trivial, principal and geometric (frozen-variable) systems as a type
+parameter on `Seed`, so one `mutate` covers all three: `extend` gives principal coefficients,
+`extend_geometric` the geometric type over a quiver's frozen block. C- and G-matrices,
+F-polynomials, rational and tropical y-variables, `y_hat`, the separation formula, denominator
+vectors.
 
 **Classification.** `is_finite_type` / `is_affine_type` / `cartan_type` /
 `is_mutation_finite`, each searching for an acyclic representative first, so the answers hold
 for non-acyclic seeds too. Cartan companion, root systems, almost-positive roots, and the
 finite-type invariants `n_clusters` / `f_vector` / `h_vector`.
+
+**Mutation type.** `mutation_type` names a mutation-finite quiver by SageMath's
+`(letter, rank, twist)` triple - finite types, simply-laced affine types, rank 2, and the
+exceptional classes $X_6$, $X_7$ and elliptic $E_{6,7,8}^{(1,1)}$ - by cached mutation-class
+membership against stored representatives. `mutation_types` handles the disconnected case.
+
+**Surface types.** `block_decomposition` decomposes a skew-symmetric quiver into the seven
+Felikson–Shapiro–Tumarkin blocks and returns the gluing that witnesses it, with `reassemble`
+as the inverse and `is_surface_type` / `is_block_decomposable` as the predicates - the
+question of whether a quiver comes from a triangulated surface, answered constructively.
+[ClusterSurfaces.jl](https://github.com/benedikt-nagler/ClusterSurfaces.jl) reads the result
+back as an actual surface.
 
 **Folding.** `fold(q, σ)` folds a symmetric quiver by an admissible vertex automorphism, with
 `is_admissible_folding` as the precondition - the route from the simply-laced types to the
@@ -97,11 +117,29 @@ $\mathrm{Gr}(k,n)$ (Scott 2006); `symbol_alphabet` enumerates the letters - 9 fo
 $\mathrm{Gr}(4,6)$, 42 for $\mathrm{Gr}(4,7)$ - with `cluster_adjacency_matrix` for which may
 sit next to each other.
 
+**Upper and lower bounds.** The Berenstein–Fomin–Zelevinsky bounds
+$\mathcal{L}(\Sigma) \subseteq \mathcal{A} \subseteq \mathcal{U}(\Sigma)$:
+`lower_bound_generators` and `standard_monomials` for the lower bound,
+`lower_bound_expansion` to write an element in that basis, and `is_laurent` /
+`in_upper_bound` for membership in the upper bound - decided by $n+1$ exact Laurentness
+checks, with no Gröbner basis, since mutation is an involution on the fraction field.
+`bound_certificate` reports which hypotheses of the $\mathcal{A} = \mathcal{U}$ theorem
+actually hold (`is_acyclic`, `is_coprime`, `has_full_rank`).
+
+**Greedy basis.** `greedy_element` and `greedy_coefficients` give the Lee–Li–Zelevinsky
+greedy basis of a rank-2 cluster algebra - the cluster monomials plus the imaginary elements,
+positive by construction.
+
 **Friezes.** SL₂ frieze patterns from triangulated polygons, with their integrality.
 
 **Isomorphism and sampling.** `canonical_form` / `is_isomorphic` give normal forms up to
 relabeling (`mutation_class` does not dedup); `random_quiver` / `random_mutate` sample quivers
 and walks.
+
+**Interoperability.** `to_dig6` / `from_dig6` and `to_qmu` / `from_qmu` (plus `write_qmu` /
+`read_qmu`) read and write the two formats the rest of the field uses - SageMath's canonical
+digraph6 pair and Keller's quiver-mutation applet files - so a quiver can move between this
+package, Sage and the applet without being retyped.
 
 ## Extensions
 
@@ -131,6 +169,15 @@ exactly here controls a continuous object that is only defined asymptotically:
 - [ExactWKB.jl](https://github.com/benedikt-nagler/ExactWKB.jl) - the bridge: Stokes graphs
   of a Schrödinger-type ODE, connected to this package by the Iwaki–Nakanishi dictionary,
   where Voros-symbol jumps are y-mutations and BPS spectra are maximal green sequences.
+
+Two further packages build directly on this one:
+
+- [ClusterSurfaces.jl](https://github.com/benedikt-nagler/ClusterSurfaces.jl) - cluster
+  algebras from marked surfaces: ideal triangulations, arc flips, lambda lengths and shear
+  coordinates, where a flip is a mutation of the seed built here.
+- [QuantumClusterAlgebras.jl](https://github.com/benedikt-nagler/QuantumClusterAlgebras.jl) -
+  the $q$-deformation: compatible pairs, quantum tori, quantum seed mutation, with the
+  classical limit landing back in this package.
 
 ## License
 
