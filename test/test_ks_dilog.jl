@@ -1,5 +1,6 @@
 using Test
 using ClusterAlgebras
+using AbstractAlgebra: gen, base_ring
 
 @testset "KS dilog / Ω(γ) export" begin
 
@@ -145,4 +146,61 @@ using ClusterAlgebras
                                      truncation_degree = 4) for seq in mgs]
         @test all(p == products[1] for p in products)
     end
+    # ─── Shifted / inverted factors: the refined-Ω generalization ────────────
+    # A state with a nontrivial refined index Ω(γ, y) contributes shifted
+    # dilogarithm factors with integer exponents.  The two conventions are pinned
+    # here: a shift is the substitution ŷ^γ → v^s ŷ^γ, and an exponent is a
+    # genuine inverse in the truncated quantum torus.
+    @testset "shifted and inverted dilogarithm factors" begin
+        Λ = [0 2; -2 0]
+        γ = [[1, 0]]
+
+        # 𝔼(ŷ^γ)·𝔼(ŷ^γ)^{-1} = 1
+        w = QuantumDilogWord([γ[1], γ[1]], Λ, [1, 1], [1, 1], [0, 0], [1, -1])
+        prod = ks_dilog_product(w; truncation_degree = 6)
+        @test prod == Dict([0, 0] => one(first(values(prod))))
+
+        # a shift is a substitution: the coefficient of ŷ^{nγ} picks up v^{ns}
+        for s in (-2, 1, 3)
+            plain   = ks_dilog_product(QuantumDilogWord([γ[1]], Λ, [1]);
+                                       truncation_degree = 6)
+            shifted = ks_dilog_product(
+                QuantumDilogWord([γ[1]], Λ, [1], [1], [s], [1]);
+                truncation_degree = 6)
+            @test keys(shifted) == keys(plain)
+            for (α, c) in plain
+                n = α[1]                                     # α = n·γ, γ = (1,0)
+                @test shifted[α] == c * parent(c)(gen(base_ring(parent(c))))^(n * s)
+            end
+        end
+
+        # a positive exponent is repeated multiplication
+        sq = ks_dilog_product(QuantumDilogWord([γ[1]], Λ, [1], [1], [0], [2]);
+                              truncation_degree = 6)
+        twice = ks_dilog_product(QuantumDilogWord([γ[1], γ[1]], Λ, [1, 1]);
+                                 truncation_degree = 6)
+        @test sq == twice
+    end
+
+    # ─── The adjoint action and its classical limit ──────────────────────────
+    # The product itself has no v → 1 limit (its coefficients have poles there);
+    # the conjugation does, and at v = 1 it is exactly the Poisson automorphism
+    # X_μ ↦ X_μ (1 + X_γ)^{Λ(γ,μ)} that the DDP jump uses.
+    @testset "adjoint action and classical limit" begin
+        Λ = [0 2; -2 0]
+        w = QuantumDilogWord([[1, 0]], Λ, [1])
+
+        @test_throws ClusterAlgebras.InvalidArgument ks_classical_limit(
+            ks_dilog_product(w; truncation_degree = 4))
+
+        ad = ks_classical_limit(ks_dilog_adjoint(w, [0, 1]; truncation_degree = 4))
+        # Λ(γ, μ) = (1,0)·Λ·(0,1) = 2, so X_μ ↦ X_μ (1 + X_γ)²
+        expected = Dict([0, 1] => 1 // 1, [1, 1] => 2 // 1, [2, 1] => 1 // 1)
+        @test ad == Dict{Vector{Int}, Rational{BigInt}}(expected)
+
+        # a cycle is unchanged by its own wall: Λ(γ, γ) = 0
+        self = ks_classical_limit(ks_dilog_adjoint(w, [1, 0]; truncation_degree = 4))
+        @test self == Dict{Vector{Int}, Rational{BigInt}}([1, 0] => 1 // 1)
+    end
+
 end

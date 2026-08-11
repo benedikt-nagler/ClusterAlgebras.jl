@@ -86,7 +86,8 @@ export is_green, is_red, is_all_red, maximal_green_sequences, mgs_search,
        green_sequence_signs, verify_mutation_sequence
 export mutation_period, y_system, is_bipartite
 export dt_transformation
-export ordered_c_vectors, QuantumDilogWord, quantum_dilog_word, omega, ks_dilog_product
+export ordered_c_vectors, QuantumDilogWord, quantum_dilog_word, omega, ks_dilog_product,
+       ks_dilog_adjoint, ks_classical_limit
 export fpolynomials
 export n_cluster_variables, n_clusters, f_vector, h_vector
 export grassmannian, plucker_label, is_plucker_label, plucker_subset, x_coordinates
