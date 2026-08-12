@@ -18,7 +18,7 @@ x_k x_k' = \prod_{b_{ik}>0} x_i^{b_{ik}} + \prod_{b_{ik}<0} x_i^{-b_{ik}},
 ```
 
 and updates ``B`` accordingly. Iterating this generates the algebra. Despite the division,
-every cluster variable is a Laurent polynomial in any initial cluster - the Laurent
+every cluster variable is a Laurent polynomial in any initial cluster, which is the Laurent
 phenomenon.
 
 Fomin and Zelevinsky introduced this to describe canonical bases in Lie theory, but the same
@@ -27,12 +27,12 @@ flips, frieze patterns and ``\mathrm{SL}_2``-tilings, generalized associahedra a
 combinatorics, quiver representations and their tilting theory, Teichmüller theory and
 Y-systems, discrete integrable recurrences with unexpected integrality, and the symbol
 alphabets of scattering amplitudes. This package is the computational engine underneath all
-of those: it does not commit to any one application, and each layer - quivers, coefficients,
-classification, green sequences - is usable on its own.
+of those. It commits to no one application, and its layers (quivers, coefficients,
+classification, green sequences) are usable on their own.
 
 The package works over ``\operatorname{Frac}(\mathbb{Z}[x_1,\ldots,x_n])`` via
 [AbstractAlgebra.jl](https://github.com/Nemocas/AbstractAlgebra.jl), so cluster variables are
-exact rational functions rather than floating-point, and the integer data (B-matrices, c- and
+exact rational functions and not floating-point, and the integer data (B-matrices, c- and
 g-vectors, F-polynomials) is exact by construction. Seeds are immutable and [`mutate`](@ref)
 returns a new seed, so a mutation path is a value you can keep, compare and replay.
 
@@ -78,6 +78,11 @@ Plotting lives in package extensions: load `Graphs`, `GraphMakie` and a Makie ba
 enable `plot_quiver`, `plot_exchange_graph` and friends. Loading `Graphs` alone gets you the
 quiver and exchange graph as `Graphs.jl` objects.
 
+With an *interactive* backend (GLMakie or WGLMakie), `mutation_explorer(s)` mutates by
+clicking a vertex, with a history slider over the whole walk, hover readout of each vertex's
+cluster variable and c-/g-vectors, a text box for applying a sequence, and an optional
+mutation-class minimap.
+
 ## What's here
 
 | Page | Covers |
@@ -85,8 +90,9 @@ quiver and exchange graph as `Graphs.jl` objects.
 | [Quivers](quivers.md) | exchange matrices, frozen vertices, named types, canonical forms, random sampling |
 | [Seeds and mutation](seeds.md) | seeds over `Frac(ZZ[x])`, mutation, denominator vectors |
 | [Coefficients](coefficients.md) | principal and extended coefficients, c-/g-vectors, F-polynomials, y-variables |
-| [Types and classification](classification.md) | Cartan companion, root systems, finite/affine recognition, folding, enumerative invariants |
+| [Types and classification](classification.md) | Cartan companion, root systems, finite/affine recognition, folding, enumerative invariants, mutation-type naming, surface types by block decomposition |
 | [Mutation classes](classes.md) | mutation-class BFS, exchange graphs, truncation guards |
+| [Bounds and the greedy basis](bounds.md) | upper/lower bounds, standard monomials, acyclic-coprime certificate, rank-2 greedy elements |
 | [Green sequences and DT](green.md) | green/red colouring, maximal green sequences, DT transformation, KS dilogarithm words, Y-system periodicity |
 | [Friezes](friezes.md) | ``\mathrm{SL}_2`` frieze patterns from triangulated polygons |
 | [Grassmannians](grassmannian.md) | Plücker seeds of ``\mathrm{Gr}(k,n)``, symbol alphabets, cluster adjacency |
@@ -97,10 +103,10 @@ full list of exported names.
 ## Related packages
 
 This package is self-contained. It is also the discrete foundation of a family of Julia
-packages for exact and asymptotic methods - where a combinatorial structure computed exactly
-here controls a continuous object that is only defined asymptotically.
+packages for exact and asymptotic methods, in which a combinatorial structure computed
+exactly here controls a continuous object that is only defined asymptotically.
 [Resurgence.jl](https://github.com/benedikt-nagler/Resurgence.jl) is the continuous side
-(divergent series, Borel–Padé summation, transseries), independent of this package, and
+(divergent series, Borel–Padé summation, transseries) and is independent of this package.
 [ExactWKB.jl](https://github.com/benedikt-nagler/ExactWKB.jl) is the bridge: Stokes graphs of
-a Schrödinger-type ODE, connected here by the Iwaki–Nakanishi dictionary, where Voros-symbol
-jumps are y-mutations and BPS spectra are maximal green sequences.
+a Schrödinger-type ODE, connected here by the Iwaki–Nakanishi dictionary, in which
+Voros-symbol jumps are y-mutations and BPS spectra are maximal green sequences.

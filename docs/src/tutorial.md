@@ -41,7 +41,7 @@ Cluster variables:
 ## Mutation
 
 Mutating at vertex 1 replaces ``x_1`` by ``(x_2+1)/x_1`` and reverses the arrow. Seeds are
-immutable - [`mutate`](@ref) returns a new seed and records the path taken:
+immutable, so [`mutate`](@ref) returns a new seed and records the path taken:
 
 ```jldoctest a2
 julia> s1 = mutate(s, 1)
@@ -56,8 +56,8 @@ Mutation path: [1]
 ```
 
 Individual cluster variables are reachable by indexing the seed. Mutating again at vertex 2
-produces the variable in which the Laurent phenomenon is easiest to see - the division by
-``x_1 x_2`` leaves no denominator behind beyond the initial cluster:
+produces the variable in which the Laurent phenomenon is easiest to see: the division by
+``x_1 x_2`` leaves no denominator behind beyond the initial cluster.
 
 ```jldoctest a2
 julia> s2 = mutate(s1, 2);
@@ -90,7 +90,7 @@ julia> mutation_period(Seed(q), [1, 2])
 5
 ```
 
-Five mutations, five distinct cluster variables - ``x_1``, ``x_2`` and the three produced
+Five mutations and five distinct cluster variables: ``x_1``, ``x_2`` and the three produced
 above. The counting functions agree, and the classification confirms the type:
 
 ```jldoctest a2
@@ -137,8 +137,8 @@ julia> separation_formula(sp, 1)
 (x_2 + y1)//x_1
 ```
 
-Sign coherence - every c-vector is nonzero and has entries of a single sign - is a theorem
-of Derksen–Weyman–Zelevinsky, and holds here:
+Sign coherence, meaning every c-vector is nonzero with entries of a single sign, is a
+theorem of Derksen–Weyman–Zelevinsky, and holds here:
 
 ```jldoctest a2
 julia> is_sign_coherent(sp)
@@ -147,8 +147,8 @@ true
 
 ## Green sequences
 
-A maximal green sequence mutates every c-vector from green to red. Type ``A_2`` has two,
-of lengths 2 and 3 - the two sides of the pentagon:
+A maximal green sequence mutates every c-vector from green to red. Type ``A_2`` has two, of
+lengths 2 and 3, the two sides of the pentagon:
 
 ```jldoctest a2
 julia> maximal_green_sequences(extend(Seed(q)))
