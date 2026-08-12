@@ -34,5 +34,6 @@ using Aqua
     include("test_mutation_type.jl")
     include("test_interop.jl")
     include("test_block_decomposition.jl")
+    include("test_explorer.jl")
     include("test_makie_ext.jl")
 end

@@ -61,6 +61,7 @@ include("random_quiver.jl")
 include("mutation_type.jl")
 include("interop.jl")
 include("block_decomposition.jl")
+include("explorer.jl")
 
 export Quiver, Seed, mutate, to_dot
 export ClusterAlgebraError, NotSkewSymmetrizable, FrozenVertexMutation, InvalidVertex, InvalidArgument
@@ -106,6 +107,7 @@ function plot_exchange_graph end
 function plot_frieze end
 function plot_green_sequence end
 function plot_g_vector_fan end
+function mutation_explorer end
 
 plot_quiver(::Any; kwargs...) =
     throw(ArgumentError("plot_quiver requires GraphMakie: run `using GraphMakie` (and a Makie backend)."))
@@ -117,9 +119,12 @@ plot_green_sequence(::Any, ::Any; kwargs...) =
     throw(ArgumentError("plot_green_sequence requires Makie: run `using CairoMakie` (or GLMakie)."))
 plot_g_vector_fan(::Any; kwargs...) =
     throw(ArgumentError("plot_g_vector_fan requires Makie: run `using CairoMakie` (or GLMakie)."))
+mutation_explorer(::Any; kwargs...) =
+    throw(ArgumentError("mutation_explorer requires GraphMakie: run `using Graphs, GraphMakie` " *
+                        "and an interactive backend (GLMakie or WGLMakie)."))
 
 export plot_quiver, plot_quiver!, plot_exchange_graph, plot_frieze, plot_green_sequence
-export plot_g_vector_fan
+export plot_g_vector_fan, mutation_explorer
 
 @setup_workload begin
     B = [0 1; -1 0]
