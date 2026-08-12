@@ -22,6 +22,7 @@ makedocs(;
             "Coefficients" => "coefficients.md",
             "Types and classification" => "classification.md",
             "Mutation classes" => "classes.md",
+            "Bounds and the greedy basis" => "bounds.md",
             "Green sequences and DT" => "green.md",
             "Friezes" => "friezes.md",
             "Grassmannians" => "grassmannian.md",
