@@ -267,6 +267,70 @@
         r = verify_mutation_sequence(Seed(Quiver(Bw)), vcat(word, reds[1]);
                                      require_maximal = false)
         @test !r.valid && occursin("not green", r.reason)
+        # require_green = false accepts the same red step.
+        r = verify_mutation_sequence(Seed(Quiver(Bw)), vcat(word, reds[1]);
+                                     require_maximal = false, require_green = false)
+        @test r.valid
+    end
+
+    # Q_{a,b,c}: a arrows 1→2, b arrows 2→3, c arrows 3→1 (Muller arXiv:1503.04675).
+    Qabc(a, b, c) = Quiver([0 a -c; -a 0 b; c -b 0])
+
+    @testset "reddening_search" begin
+        # Every maximal green sequence is a reddening sequence, so on finite type
+        # both exist and the shortest reddening sequence is no longer.
+        for q in (Quiver(:A, 2), Quiver(:A, 3), Quiver(:D, 4), Quiver(:B, 3),
+                  Quiver(:A, 4))
+            m = mgs_search(Seed(q); max_length = 30, max_nodes = 500_000)
+            r = reddening_search(Seed(q); max_length = 30, max_nodes = 500_000)
+            @test m.status === :found
+            @test r.status === :found
+            @test r.min_length <= m.min_length
+            # The word reaches all-red but need not be green.
+            v = verify_mutation_sequence(Seed(q), r.sequence; require_green = false)
+            @test v.valid && v.maximal
+        end
+
+        # [Mul16] Thm 2.3.1 + Fig. 11: Q_{2,2,3} has NO maximal green sequence and
+        # DOES have a reddening sequence. This is the separator between the two
+        # notions, and the oracle that catches a search still requiring greenness.
+        q223 = Qabc(2, 2, 3)
+        @test mgs_search(Seed(q223); max_length = 12,
+                         max_nodes = 2_000_000).status === :none_within_length
+        r223 = reddening_search(Seed(q223); max_length = 14, max_nodes = 2_000_000)
+        @test r223.status === :found
+        @test r223.min_length == 6
+        # It verifies as a reddening sequence and is refused as a green one.
+        @test verify_mutation_sequence(Seed(q223), r223.sequence;
+                                       require_green = false).maximal
+        vg = verify_mutation_sequence(Seed(q223), r223.sequence; require_green = true)
+        @test !vg.valid && occursin("not green", vg.reason)
+
+        # [BDP14]: the Markov quiver Q_{2,2,2} has neither.
+        q222 = Qabc(2, 2, 2)
+        @test mgs_search(Seed(q222); max_length = 12,
+                         max_nodes = 2_000_000).status === :none_within_length
+        @test reddening_search(Seed(q222); max_length = 12,
+                               max_nodes = 2_000_000).status === :none_within_length
+
+        # [Kel17] Thm 4.7: existence is invariant under mutation. MGS existence is
+        # not, so this is a property only the reddening search may have.
+        for q0 in (Quiver(:A, 3), Quiver(:D, 4), Qabc(2, 2, 2))
+            mc = mutation_class(q0; max_quivers = 200)
+            @test !is_truncated(mc)
+            sts = unique([reddening_search(Seed(mc[i]); max_length = 14,
+                                           max_nodes = 300_000).status
+                          for i in 1:length(mc)])
+            @test length(sts) == 1
+        end
+
+        # Quiver method, and an already-all-red seed as a length-0 sequence. The
+        # seed must carry principal coefficients: c-vectors do not exist on a
+        # trivial-coefficient seed, where the search restarts from C = I.
+        @test reddening_search(Quiver(:A, 2)).status === :found
+        red2 = mutate(extend(Seed(Quiver(:A, 2))), [2, 1])
+        @test is_all_red(red2)
+        @test reddening_search(red2).min_length == 0
     end
 
 end

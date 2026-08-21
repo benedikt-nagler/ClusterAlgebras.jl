@@ -84,7 +84,7 @@ export extend, extend_geometric, y_hat, cmatrix, gmatrix, cvectors, gvectors
 export c_vector, g_vector, f_polynomial, y_variables, separation_formula, separation_formula_trivial
 export is_sign_coherent, is_mutation_finite
 export is_green, is_red, is_all_red, maximal_green_sequences, mgs_search,
-       green_sequence_signs, verify_mutation_sequence
+       reddening_search, green_sequence_signs, verify_mutation_sequence
 export mutation_period, y_system, is_bipartite
 export dt_transformation
 export ordered_c_vectors, QuantumDilogWord, quantum_dilog_word, omega, ks_dilog_product,

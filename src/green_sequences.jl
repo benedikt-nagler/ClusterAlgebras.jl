@@ -198,6 +198,106 @@ function mgs_search(s::Seed; max_length::Int = 100, max_nodes::Int = 10^6)
     return (status = :none, min_length = nothing, sequence = nothing)
 end
 
+# ─── Reddening (green-to-red) sequences ──────────────────────────────────────
+#
+# A reddening sequence drops the greenness requirement at each step and keeps
+# only the all-red terminal condition ([Mul16] Def 3.1.1), so every maximal
+# green sequence is one and the converse fails: Q_{2,2,3} has a reddening
+# sequence (ibid., Fig. 11) and no maximal green sequence (ibid., Thm 2.3.1).
+# The difference that matters here is invariance - reddening existence is a
+# property of the mutation class ([Kel17] Thm 4.7, after [Mul16] Def 3.1.1),
+# MGS existence is not, so a negative transfers to every representative.
+# Hereditarity holds for both ([Mul16] Thm 3.1.3).
+
+"""
+    reddening_search(s::Seed; max_length::Int = 100, max_nodes::Int = 10^6)
+        → (status = ::Symbol, min_length = ::Union{Int, Nothing},
+           sequence = ::Union{Vector{Int}, Nothing})
+
+Find a shortest reddening sequence of `s` of length at most `max_length`.
+
+A reddening (green-to-red) sequence carries the framed quiver to the all-red
+state by any mutations, green or not, in the sense of Muller's Definition 3.1.1.
+Every maximal green sequence is one, and the converse fails: Muller shows
+``Q_{2,2,3}`` has a reddening sequence and no maximal green sequence. A returned
+word is generally not green, so replay it with
+`verify_mutation_sequence(...; require_green = false)`.
+
+Existence is invariant under mutation, unlike existence of a maximal green
+sequence, so an answer here describes the whole mutation class of `s`. The
+statuses mean what they mean for [`mgs_search`](@ref): `:none_within_length`
+bounds only the stated length, and `:unknown` is a budget or overflow hit.
+
+# Examples
+```jldoctest
+julia> reddening_search(Quiver(:A, 2))
+(status = :found, min_length = 2, sequence = [2, 1])
+
+julia> markov = Quiver([0 2 -2; -2 0 2; 2 -2 0]);
+
+julia> reddening_search(markov; max_length = 12).status
+:none_within_length
+
+julia> reddening_search(Quiver([0 2 -3; -2 0 2; 3 -2 0])).min_length
+6
+```
+"""
+function reddening_search(s::Seed; max_length::Int = 100, max_nodes::Int = 10^6)
+    n = s.quiver.n_mutable
+    B0 = Int128.(s.quiver.B[1:n, 1:n])
+    if s isa Seed{PrincipalCoefficients}
+        C0 = Int128.(cmatrix(s))
+    else
+        C0 = zeros(Int128, n, n); for i in 1:n; C0[i, i] = 1; end
+    end
+
+    notfound = (status = :unknown, min_length = nothing, sequence = nothing)
+    _red(C) = all(k -> all(<=(0), view(C, :, k)), 1:n)
+    _red(C0) && return (status = :found, min_length = 0, sequence = Int[])
+
+    # BFS over (B, C) with the last mutated vertex carried alongside: μ_k is an
+    # involution on (B, C), so mutating at it again returns to the parent, which
+    # is already visited. Skipping it prunes without losing a sequence.
+    queue = [(B0, C0, 0, Int[])]
+    visited = Set{Tuple{Matrix{Int128},Matrix{Int128}}}([(B0, C0)])
+    head = 1
+    truncated = false
+    overflowed = false
+
+    while head <= length(queue)
+        length(queue) > max_nodes && return notfound
+        B, C, last, seq = queue[head]
+        head += 1
+
+        if length(seq) >= max_length
+            truncated = true
+            continue
+        end
+
+        for k in 1:n
+            k == last && continue
+            state = (_mutate_matrix(B, k), _mutate_C(C, B, k))
+            if max(maximum(abs, state[1]), maximum(abs, state[2])) > _MGS_ENTRY_LIMIT
+                overflowed = true    # prune: can only lose sequences, never invent them
+                continue
+            end
+            _red(state[2]) && return (status = :found, min_length = length(seq) + 1,
+                                      sequence = vcat(seq, k))
+            if state ∉ visited
+                push!(visited, state)
+                push!(queue, (state[1], state[2], k, vcat(seq, k)))
+            end
+        end
+    end
+
+    overflowed && return notfound
+    truncated && return (status = :none_within_length, min_length = nothing,
+                         sequence = nothing)
+    return (status = :none, min_length = nothing, sequence = nothing)
+end
+
+reddening_search(q::Quiver; kwargs...) = reddening_search(Seed(q); kwargs...)
+
 """
     verify_mutation_sequence(s::Seed, word::AbstractVector{<:Integer};
                              require_maximal::Bool = true)
@@ -235,15 +335,17 @@ julia> verify_mutation_sequence(Seed(Quiver(:A, 2)), [1, 2]).reason
 ```
 """
 function verify_mutation_sequence(s::Seed, word::AbstractVector{<:Integer};
-                                  require_maximal::Bool = true)
-    r = _verify_replay(Int128, s, word, require_maximal)
+                                  require_maximal::Bool = true,
+                                  require_green::Bool = true)
+    r = _verify_replay(Int128, s, word, require_maximal, require_green)
     # Guard trip on the fast path → exact BigInt replay of this one word.
-    r === :overflow && return _verify_replay(BigInt, s, word, require_maximal)
+    r === :overflow && return _verify_replay(BigInt, s, word, require_maximal, require_green)
     return r
 end
 
 function _verify_replay(::Type{T}, s::Seed, word::AbstractVector{<:Integer},
-                        require_maximal::Bool) where {T <: Integer}
+                        require_maximal::Bool,
+                        require_green::Bool = true) where {T <: Integer}
     n = s.quiver.n_mutable
     B = T.(s.quiver.B[1:n, 1:n])
     if s isa Seed{PrincipalCoefficients}
@@ -258,7 +360,8 @@ function _verify_replay(::Type{T}, s::Seed, word::AbstractVector{<:Integer},
     for (t, k) in enumerate(word)
         1 <= k <= n || return reject("vertex $k out of range 1:$n at step $t")
         col = view(C, :, k)
-        all(>=(0), col) || return reject("vertex $k not green at step $t")
+        require_green && !all(>=(0), col) &&
+            return reject("vertex $k not green at step $t")
         push!(charges, BigInt.(col))
         state = (_mutate_matrix(B, k), _mutate_C(C, B, k))
         if T !== BigInt &&
@@ -270,8 +373,8 @@ function _verify_replay(::Type{T}, s::Seed, word::AbstractVector{<:Integer},
 
     maximal = all(k -> all(<=(0), view(C, :, k)), 1:n)
     if require_maximal && !maximal
-        return reject("sequence is green but not maximal: green vertices remain " *
-                      "after step $(length(word))")
+        return reject("sequence is $(require_green ? "green" : "valid") but not " *
+                      "maximal: green vertices remain after step $(length(word))")
     end
     return (valid = true, maximal = maximal, charges = charges, reason = nothing)
 end
