@@ -141,9 +141,9 @@ length ≤ 10; entries reach ~2^66). Overflow-pruning can only lose sequences,
 never invent them, so a `:found` certificate is always exact; when pruning
 occurred and nothing was found the result is honestly `:unknown`.
 
-Unlike [`maximal_green_sequences`](@ref), which enumerates sequences by
-depth-first search, this function only decides existence and minimality -
-use it when the answer, not the list, is wanted.
+[`maximal_green_sequences`](@ref) enumerates sequences by depth-first search.
+Only existence and minimality are decided here, so use it when the answer is
+wanted rather than the list.
 """
 function mgs_search(s::Seed; max_length::Int = 100, max_nodes::Int = 10^6)
     n = s.quiver.n_mutable
@@ -321,9 +321,9 @@ replayed again in `BigInt` (exact at any size, cheap for one sequence), so
 the verifier has no ceiling and never refuses a genuine certificate.
 Failure reasons name the first offending step.
 
-Unlike [`ordered_c_vectors`](@ref), which throws on a bad sequence and
-replays through the full symbolic seed, this function reports verdicts as
-data and touches only integer matrices.
+[`ordered_c_vectors`](@ref) throws on a bad sequence and replays through the
+full symbolic seed. Verdicts are reported here as data, and only integer
+matrices are touched.
 
 # Example
 ```julia
