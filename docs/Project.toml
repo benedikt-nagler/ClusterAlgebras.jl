@@ -3,5 +3,5 @@ ClusterAlgebras = "8a79f08c-43aa-40ef-a276-b8dea658c9b1"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [compat]
-ClusterAlgebras = "0.1"
+ClusterAlgebras = "0.2"
 Documenter = "1"
