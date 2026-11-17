@@ -114,14 +114,19 @@ exact only when `is_truncated(eg) == false`.
 """
 function f_vector(eg::ExchangeGraph)
     _, clusters = _cluster_complex_data(eg)
-    isempty(clusters) && return Int[1]
-    n = length(clusters[1])          # rank = size of each cluster
+    return _f_vector_from_facets(clusters)
+end
 
-    # faces[k] = set of sorted k-subsets (as tuples) that appear in some cluster
+# f-vector of a pure simplicial complex given by its facets (sorted index
+# vectors, all of the same size).  result[1] = f_{-1} = 1 (the empty face).
+function _f_vector_from_facets(facets::Vector{Vector{Int}})
+    isempty(facets) && return Int[1]
+    n = length(facets[1])
+
+    # faces[k+1] = set of sorted k-subsets that appear in some facet
     faces = [Set{NTuple{k, Int}}() for k in 0:n]
 
-    for cl in clusters
-        # all subsets of cl of every size
+    for cl in facets
         for k in 0:n
             for combo in _combinations(cl, k)
                 push!(faces[k+1], NTuple{k, Int}(combo))
@@ -129,7 +134,6 @@ function f_vector(eg::ExchangeGraph)
         end
     end
 
-    # f_{-1}=1 (empty), then f_{k-1} = |faces[k]| for k=1..n  (1-indexed: f[k+1])
     result = Vector{Int}(undef, n + 1)
     result[1] = 1                        # f_{-1}
     for k in 1:n

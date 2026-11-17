@@ -86,3 +86,13 @@ end
     s2 = mutate(s, 2)
     @test s2.cluster[3] == x3_frozen
 end
+
+@testset "mutation intermediates do not wrap" begin
+    m = 3_000_000_000
+    q = Quiver([0 m 0; -m 0 m; 0 -m 0])
+    changed = mutate(q,2)
+    @test changed.B[1,3] == big(m)^2
+    @test mutate(changed,2).B == q.B
+    n = 4_000_000_000
+    @test_throws OverflowError mutate(Quiver([0 n 0;-n 0 n;0 -n 0]),2)
+end

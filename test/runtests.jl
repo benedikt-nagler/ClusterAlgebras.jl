@@ -5,7 +5,7 @@ using Aqua
 
 @testset "ClusterAlgebras.jl" begin
     @testset "Aqua" begin
-        Aqua.test_all(ClusterAlgebras)
+        Aqua.test_all(ClusterAlgebras; persistent_tasks = (tmax = 60,))
     end
 
     include("test_quiver.jl")
@@ -21,9 +21,11 @@ using Aqua
     include("test_denominator_vector.jl")
     include("test_frieze.jl")
     include("test_mutation_class.jl")
+    include("test_forks.jl")
     include("test_vectors.jl")
     include("test_fpolynomials.jl")
     include("test_enumerative.jl")
+    include("test_cluster_fan.jl")
     include("test_coefficients.jl")
     include("test_green_sequences.jl")
     include("test_periodicity.jl")

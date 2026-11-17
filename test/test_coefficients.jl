@@ -378,3 +378,16 @@ end
     @test_throws FrozenVertexMutation mutate(ge, 3)                      # frozen vertex
     @test_throws InvalidArgument y_variables(ge; semifield = :bogus)
 end
+
+@testset "late principal extension retains its original frame" begin
+    base = Seed(Quiver(:A,2))
+    for path in ([1],[1,2],[1,2,1])
+        late = extend(mutate(base,path))
+        early = mutate(extend(base),path)
+        @test cmatrix(late) == cmatrix(early)
+        @test gmatrix(late) == gmatrix(early)
+        @test transpose(gmatrix(late))*cmatrix(late) == [1 0;0 1]
+        # Polynomial rings are distinct instances; compare their named rational functions.
+        @test string.(y_variables(late)) == string.(y_variables(early))
+    end
+end

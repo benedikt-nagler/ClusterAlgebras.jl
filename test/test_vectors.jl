@@ -139,3 +139,15 @@ end
     B_inf = [0 3 -1; -3 0 2; 1 -2 0]
     @test !is_mutation_finite(Quiver(B_inf); max_quivers = 500)
 end
+
+@testset "search exhaustion is not a negative theorem" begin
+    affine = Quiver([0 1 1;-1 0 1;-1 -1 0])
+    @test_throws ClusterAlgebras.InvalidArgument is_mutation_finite(affine;max_quivers=1)
+    blocks = zeros(Int,28,28)
+    for k in 1:2:27
+        blocks[k,k+1] = 2
+        blocks[k+1,k] = -2
+    end
+    @test is_mutation_finite(Quiver(blocks);max_quivers=1)
+    @test !is_mutation_finite(Quiver([0 3 -1;-3 0 2;1 -2 0]);max_quivers=1)
+end

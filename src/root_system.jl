@@ -395,7 +395,9 @@ function cartan_types(q::Quiver)
     q.n_mutable == 0 && return Tuple{Symbol, Int}[]
     rep = _finite_acyclic_rep(q)
     comps = _undirected_components(rep.B, rep.n_mutable)
-    types = [_connected_cartan_type(Quiver(rep.B[c, c])) for c in comps]
+    # Restrict the symmetrizer along with the matrix: dropping it makes every
+    # non-simply-laced component fail skew-symmetrizability.
+    types = [_connected_cartan_type(Quiver(rep.B[c, c], length(c), rep.d[c])) for c in comps]
     return sort(types)
 end
 

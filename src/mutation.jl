@@ -1,14 +1,28 @@
+# Machine-integer storage is retained. Widen intermediates before abs, products
+# and negation; an unrepresentable result raises rather than wrapping.
+function _mutation_entry(::Type{T}, x) where {T<:Integer}
+    try
+        T(x)
+    catch e
+        e isa InexactError || rethrow()
+        throw(OverflowError("exact mutation entry exceeds the matrix integer type $T"))
+    end
+end
+
 function _mutate_matrix(B::Matrix{T}, k::Int) where {T <: Integer}
-    n = size(B, 1)
-    B_new = copy(B)
+    n = size(B,1)
+    out = copy(B)
+    W = widen(T)
     for i in 1:n, j in 1:n
         if i == k || j == k
-            B_new[i, j] = -B[i, j]
+            out[i,j] = _mutation_entry(T,-W(B[i,j]))
         else
-            B_new[i, j] = B[i, j] + (abs(B[i, k]) * B[k, j] + B[i, k] * abs(B[k, j])) ÷ 2
+            a,b = W(B[i,k]),W(B[k,j])
+            correction = a > 0 && b > 0 ? a*b : a < 0 && b < 0 ? -a*b : zero(W)
+            out[i,j] = _mutation_entry(T,W(B[i,j])+correction)
         end
     end
-    return B_new
+    out
 end
 
 """
@@ -19,7 +33,7 @@ end
 Mutate a `Quiver` or `Seed` at mutable vertex `k` (Fomin–Zelevinsky matrix
 mutation; for seeds also the exchange relation on cluster variables, and for
 principal-coefficient seeds additionally the C-matrix, y-variables, and
-F-polynomials).  Returns a new object; the input is never modified.
+F-polynomials). Unrepresentable integer entries throw `OverflowError`.  Returns a new object; the input is never modified.
 
 A vector of indices applies the mutations left to right
 (`mutate(x, [1, 2]) == mutate(mutate(x, 1), 2)`).  A string mutates at the

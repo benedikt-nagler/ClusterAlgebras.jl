@@ -1,0 +1,139 @@
+diff --git a/docs/src/classes.md b/docs/src/classes.md
+index c1ed3eb..8edcf15 100644
+--- a/docs/src/classes.md
++++ b/docs/src/classes.md
+@@ -9,5 +9,5 @@ Enumeration of the mutation class of a quiver, up to isomorphism, and the exchan
+ ```@autodocs
+ Modules = [ClusterAlgebras]
+ Private = false
+-Pages = ["src/mutation_class.jl"]
++Pages = ["src/mutation_class.jl", "src/cluster_fan.jl"]
+ ```
+diff --git a/src/ClusterAlgebras.jl b/src/ClusterAlgebras.jl
+index 537958e..7027c3c 100644
+--- a/src/ClusterAlgebras.jl
++++ b/src/ClusterAlgebras.jl
+@@ -49,12 +49,14 @@ include("greedy.jl")
+ include("bounds.jl")
+ include("frieze.jl")
+ include("mutation_class.jl")
++include("forks.jl")
+ include("coefficients.jl")
+ include("green_sequences.jl")
+ include("periodicity.jl")
+ include("dt_transformation.jl")
+ include("ks_dilog.jl")
+ include("enumerative.jl")
++include("cluster_fan.jl")
+ include("grassmannian.jl")
+ include("symbol_alphabet.jl")
+ include("random_quiver.jl")
+@@ -79,6 +81,9 @@ export lower_bound_generators, upper_bound_generators, standard_monomials
+ export lower_bound_expansion, BoundCertificate, bound_certificate
+ export Frieze, frieze
+ export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated
++export is_abundant, is_fork, point_of_return, is_pre_fork, pre_fork_vertices
++export ForklessPart, forkless_part, pre_forkless_part
++export has_finite_forkless_part, has_finite_pre_forkless_part
+ export AbstractSeed, CoefficientKind, TrivialCoefficients, PrincipalCoefficients, ExtendedCoefficients
+ export extend, extend_geometric, y_hat, cmatrix, gmatrix, cvectors, gvectors
+ export c_vector, g_vector, f_polynomial, y_variables, separation_formula, separation_formula_trivial
+@@ -91,6 +96,8 @@ export ordered_c_vectors, QuantumDilogWord, quantum_dilog_word, omega, ks_dilog_
+        ks_dilog_adjoint, ks_classical_limit
+ export fpolynomials
+ export n_cluster_variables, n_clusters, f_vector, h_vector
++export ClusterFan, ClusterComplex, g_vector_fan, cluster_complex
++export rays, maximal_cones, facets, vertex_labels, is_complete
+ export grassmannian, plucker_label, is_plucker_label, plucker_subset, x_coordinates
+ export symbol_alphabet, cluster_adjacency_matrix, cluster_adjacent
+ export canonical_form, canonical_permutation, permute_vertices
+diff --git a/src/enumerative.jl b/src/enumerative.jl
+index 1c20296..ddf38ec 100644
+--- a/src/enumerative.jl
++++ b/src/enumerative.jl
+@@ -114,14 +114,19 @@ exact only when `is_truncated(eg) == false`.
+ """
+ function f_vector(eg::ExchangeGraph)
+     _, clusters = _cluster_complex_data(eg)
+-    isempty(clusters) && return Int[1]
+-    n = length(clusters[1])          # rank = size of each cluster
++    return _f_vector_from_facets(clusters)
++end
++
++# f-vector of a pure simplicial complex given by its facets (sorted index
++# vectors, all of the same size).  result[1] = f_{-1} = 1 (the empty face).
++function _f_vector_from_facets(facets::Vector{Vector{Int}})
++    isempty(facets) && return Int[1]
++    n = length(facets[1])
+ 
+-    # faces[k] = set of sorted k-subsets (as tuples) that appear in some cluster
++    # faces[k+1] = set of sorted k-subsets that appear in some facet
+     faces = [Set{NTuple{k, Int}}() for k in 0:n]
+ 
+-    for cl in clusters
+-        # all subsets of cl of every size
++    for cl in facets
+         for k in 0:n
+             for combo in _combinations(cl, k)
+                 push!(faces[k+1], NTuple{k, Int}(combo))
+@@ -129,7 +134,6 @@ function f_vector(eg::ExchangeGraph)
+         end
+     end
+ 
+-    # f_{-1}=1 (empty), then f_{k-1} = |faces[k]| for k=1..n  (1-indexed: f[k+1])
+     result = Vector{Int}(undef, n + 1)
+     result[1] = 1                        # f_{-1}
+     for k in 1:n
+diff --git a/src/mutation_class.jl b/src/mutation_class.jl
+index 2c3eec1..2fc0e39 100644
+--- a/src/mutation_class.jl
++++ b/src/mutation_class.jl
+@@ -30,6 +30,17 @@ end
+ 
+ Base.length(mc::MutationClass)           = length(mc.quivers)
+ Base.getindex(mc::MutationClass, i::Int) = mc.quivers[i]
++"""
++    is_truncated(x) → Bool
++
++Whether the search that produced `x` stopped at its seed or quiver cap instead of
++exhausting the class.
++
++Defined for [`MutationClass`](@ref), [`ExchangeGraph`](@ref), [`ClusterFan`](@ref) and
++[`ClusterComplex`](@ref). A truncated result is a piece of the object, so counts read off
++it are lower bounds and the enumerative identities do not apply. Raise `max_quivers` or
++`max_seeds` to finish the search, or use a finite-type quiver.
++"""
+ is_truncated(mc::MutationClass)          = mc.truncated
+ 
+ """
+diff --git a/src/root_system.jl b/src/root_system.jl
+index 2b17a9e..2bef379 100644
+--- a/src/root_system.jl
++++ b/src/root_system.jl
+@@ -395,7 +395,9 @@ function cartan_types(q::Quiver)
+     q.n_mutable == 0 && return Tuple{Symbol, Int}[]
+     rep = _finite_acyclic_rep(q)
+     comps = _undirected_components(rep.B, rep.n_mutable)
+-    types = [_connected_cartan_type(Quiver(rep.B[c, c])) for c in comps]
++    # Restrict the symmetrizer along with the matrix: dropping it makes every
++    # non-simply-laced component fail skew-symmetrizability.
++    types = [_connected_cartan_type(Quiver(rep.B[c, c], length(c), rep.d[c])) for c in comps]
+     return sort(types)
+ end
+ 
+diff --git a/test/runtests.jl b/test/runtests.jl
+index 9dbf014..66bdb33 100644
+--- a/test/runtests.jl
++++ b/test/runtests.jl
+@@ -21,9 +21,11 @@ using Aqua
+     include("test_denominator_vector.jl")
+     include("test_frieze.jl")
+     include("test_mutation_class.jl")
++    include("test_forks.jl")
+     include("test_vectors.jl")
+     include("test_fpolynomials.jl")
+     include("test_enumerative.jl")
++    include("test_cluster_fan.jl")
+     include("test_coefficients.jl")
+     include("test_green_sequences.jl")
+     include("test_periodicity.jl")

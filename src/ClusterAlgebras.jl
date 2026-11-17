@@ -49,12 +49,14 @@ include("greedy.jl")
 include("bounds.jl")
 include("frieze.jl")
 include("mutation_class.jl")
+include("forks.jl")
 include("coefficients.jl")
 include("green_sequences.jl")
 include("periodicity.jl")
 include("dt_transformation.jl")
 include("ks_dilog.jl")
 include("enumerative.jl")
+include("cluster_fan.jl")
 include("grassmannian.jl")
 include("symbol_alphabet.jl")
 include("random_quiver.jl")
@@ -79,6 +81,9 @@ export lower_bound_generators, upper_bound_generators, standard_monomials
 export lower_bound_expansion, BoundCertificate, bound_certificate
 export Frieze, frieze
 export MutationClass, mutation_class, ExchangeGraph, exchange_graph, is_truncated
+export is_abundant, is_fork, point_of_return, is_pre_fork, pre_fork_vertices
+export ForklessPart, forkless_part, pre_forkless_part
+export has_finite_forkless_part, has_finite_pre_forkless_part
 export AbstractSeed, CoefficientKind, TrivialCoefficients, PrincipalCoefficients, ExtendedCoefficients
 export extend, extend_geometric, y_hat, cmatrix, gmatrix, cvectors, gvectors
 export c_vector, g_vector, f_polynomial, y_variables, separation_formula, separation_formula_trivial
@@ -91,6 +96,8 @@ export ordered_c_vectors, QuantumDilogWord, quantum_dilog_word, omega, ks_dilog_
        ks_dilog_adjoint, ks_classical_limit
 export fpolynomials
 export n_cluster_variables, n_clusters, f_vector, h_vector
+export ClusterFan, ClusterComplex, g_vector_fan, cluster_complex
+export rays, maximal_cones, facets, vertex_labels, is_complete
 export grassmannian, plucker_label, is_plucker_label, plucker_subset, x_coordinates
 export symbol_alphabet, cluster_adjacency_matrix, cluster_adjacent
 export canonical_form, canonical_permutation, permute_vertices

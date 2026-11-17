@@ -30,6 +30,17 @@ end
 
 Base.length(mc::MutationClass)           = length(mc.quivers)
 Base.getindex(mc::MutationClass, i::Int) = mc.quivers[i]
+"""
+    is_truncated(x) → Bool
+
+Whether the search that produced `x` stopped at its seed or quiver cap instead of
+exhausting the class.
+
+Defined for [`MutationClass`](@ref), [`ExchangeGraph`](@ref), [`ClusterFan`](@ref) and
+[`ClusterComplex`](@ref). A truncated result is a piece of the object, so counts read off
+it are lower bounds and the enumerative identities do not apply. Raise `max_quivers` or
+`max_seeds` to finish the search, or use a finite-type quiver.
+"""
 is_truncated(mc::MutationClass)          = mc.truncated
 
 """

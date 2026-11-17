@@ -9,5 +9,5 @@ Enumeration of the mutation class of a quiver, up to isomorphism, and the exchan
 ```@autodocs
 Modules = [ClusterAlgebras]
 Private = false
-Pages = ["src/mutation_class.jl"]
+Pages = ["src/mutation_class.jl", "src/cluster_fan.jl", "src/forks.jl"]
 ```

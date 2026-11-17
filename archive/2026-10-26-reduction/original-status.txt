@@ -1,0 +1,13 @@
+ M docs/src/classes.md
+ M src/ClusterAlgebras.jl
+ M src/enumerative.jl
+ M src/mutation_class.jl
+ M src/root_system.jl
+ M test/runtests.jl
+?? AGENTS.md
+?? archive/
+?? examples/figures/
+?? src/cluster_fan.jl
+?? src/forks.jl
+?? test/test_cluster_fan.jl
+?? test/test_forks.jl

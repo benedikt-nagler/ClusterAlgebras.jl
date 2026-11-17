@@ -1,0 +1,13 @@
+┌ Warning: could not download https://pkg.julialang.org/registries
+│   exception = RequestError: Could not resolve host: pkg.julialang.org while requesting https://pkg.julialang.org/registries
+└ @ Pkg.Registry ~/.julia/juliaup/julia-1.12.6+0.aarch64.apple.darwin14/Julia-1.12.app/Contents/Resources/julia/share/julia/stdlib/v1.12/Pkg/src/Registry/Registry.jl:83
+┌ Warning: forkless search reached integer storage; returning an incomplete result
+└ @ ClusterAlgebras ~/ClusterEcosystem/ClusterAlgebras.jl/src/forks.jl:285
+┌ Warning: forkless search reached integer storage; returning an incomplete result
+└ @ ClusterAlgebras ~/ClusterEcosystem/ClusterAlgebras.jl/src/forks.jl:285
+┌ Warning: forkless search reached integer storage; returning an incomplete result
+└ @ ClusterAlgebras ~/ClusterEcosystem/ClusterAlgebras.jl/src/forks.jl:285
+┌ Warning: forkless search reached integer storage; returning an incomplete result
+└ @ ClusterAlgebras ~/ClusterEcosystem/ClusterAlgebras.jl/src/forks.jl:285
+Test Summary:      | Pass  Total     Time
+ClusterAlgebras.jl | 6013   6013  3m58.9s

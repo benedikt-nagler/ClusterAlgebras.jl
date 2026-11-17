@@ -35,8 +35,9 @@ end
 """
     extend(s::Seed{TrivialCoefficients}) → Seed{PrincipalCoefficients}
 
-Attach principal-coefficient data (C = Iₙ, rational y-variables) to `s`.
-The new seed wraps the SAME quiver, cluster, ring, and mutation path.
+Attach principal coefficients relative to the original seed of `s`.
+Replay its mutation path for C, rational y-variables and F-polynomials.
+The quiver, cluster, ring and mutation path are retained.
 """
 function extend(s::Seed{TrivialCoefficients})
     n = s.quiver.n_mutable
@@ -59,9 +60,13 @@ function extend(s::Seed{TrivialCoefficients})
         B_ext[i, n+i] = -1
     end
     fpolys = fill(one(Ry), n)
+    Bcurrent = copy(B0)
     for k in s.mutation_path
+        C = _mutate_C(C,Bcurrent,k)
+        yvars = _mutate_yvars(yvars,Bcurrent,k)
         fpolys = _mutate_fpolys(fpolys, B_ext, ygen, k)
         B_ext  = _mutate_matrix(B_ext, k)
+        Bcurrent = _mutate_matrix(Bcurrent,k)
     end
 
     pd = PrincipalData(C, yring, yvars, B0, B_ext, fpolys)
@@ -113,12 +118,16 @@ function _mutate_C(C::Matrix{T}, B::Matrix{T}, k::Int) where {T <: Integer}
     n  = size(C, 1)
     εC = _epsilon(C[:, k])
     C′ = copy(C)
-    C′[:, k] = -C[:, k]
+    W = widen(T)
+    for i in 1:n
+        C′[i,k] = _mutation_entry(T,-W(C[i,k]))
+    end
     for j in 1:n
         j == k && continue
-        bump = max(εC * B[k, j], 0)
-        iszero(bump) && continue
-        @. C′[:, j] = C[:, j] + bump * C[:, k]
+        bump = max(W(εC)*W(B[k,j]),zero(W))
+        for i in 1:n
+            C′[i,j] = _mutation_entry(T,W(C[i,j])+bump*W(C[i,k]))
+        end
     end
     return C′
 end
@@ -511,24 +520,49 @@ end
 
 # ─── Mutation-finiteness ───────────────────────────────────────────────────────
 
+# [FeSTu12b] Theorem 2.8: a connected component of order >= 3 with
+# diagram edge weight |b_ij*b_ji| > 4 is a witness of mutation-infiniteness.
+function _heavy_mutation_witness(q::Quiver)
+    for component in _undirected_components(q.B,q.n_mutable)
+        length(component) >= 3 || continue
+        any(abs(big(q.B[i,j])*q.B[j,i]) > 4 for i in component for j in component) && return true
+    end
+    false
+end
+
 """
-    is_mutation_finite(q::Quiver; max_quivers::Int = 10_000) → Bool
+    is_mutation_finite(q::Quiver; max_quivers = 10_000) → Bool
 
-Return `true` if `q` is mutation-finite (its mutation class is finite).
-
-Finite-type quivers are detected first via `is_finite_type` (which searches for
-an acyclic representative) and return `true` immediately without a full BFS - this
-correctly handles all finite Dynkin types including E₆, E₇, E₈ whose mutation
-classes exceed the default cutoff.
-
-For non-finite-type quivers, falls back to BFS with an early-exit cutoff;
-returns `false` when more than `max_quivers` distinct exchange matrices are
-found before the BFS terminates.  The default cutoff of 10 000 covers the
-largest known mutation-finite, non-finite-type classes.
+Decide mutation finiteness when a finite class or an infinite witness is established.
+Supports quivers without frozen vertices. Components of rank at most two are finite.
+A connected component of rank at least three with diagram edge weight above four
+is mutation-infinite (Felikson-Shapiro-Tumarkin 2011, Theorem 2.8).
+Throws `InvalidArgument` when the search budget is exhausted without a witness.
+Budget exhaustion is unknown, never a mathematical negative.
 """
 function is_mutation_finite(q::Quiver; max_quivers::Int = 10_000)
-    is_finite_type(q) && return true
-    !is_truncated(mutation_class(q; max_quivers))
+    max_quivers > 0 || throw(InvalidArgument("max_quivers must be positive"))
+    q.n_frozen == 0 || throw(InvalidArgument("mutation finiteness requires an unfrozen quiver"))
+    components = _undirected_components(q.B,q.n_mutable)
+    all(c -> length(c) <= 2,components) && return true
+    _heavy_mutation_witness(q) && return false
+    # Do not launch an unbounded auxiliary classification search on a wild input.
+    _is_acyclic(q) && is_finite_type(q) && return true
+    for component in components
+        length(component) >= 3 || continue
+        for k in component
+            _heavy_mutation_witness(mutate(q,k)) && return false
+        end
+    end
+    mc = try
+        mutation_class(q;max_quivers)
+    catch e
+        e isa OverflowError || rethrow()
+        throw(InvalidArgument("mutation-finiteness search exceeded integer storage; result is unknown"))
+    end
+    any(_heavy_mutation_witness,mc.quivers) && return false
+    is_truncated(mc) && throw(InvalidArgument("mutation-finiteness search budget exhausted; result is unknown"))
+    true
 end
 
 # ─── ExtendedCoefficients (geometric type) ────────────────────────────────────
