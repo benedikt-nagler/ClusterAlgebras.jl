@@ -19,7 +19,7 @@ ClusterAlgebrasGraphsExt = "Graphs"
 ClusterAlgebrasMakieExt = "Makie"
 
 [compat]
-AbstractAlgebra = "0.50"
+AbstractAlgebra = "0.50, 0.51"
 GraphMakie = "0.6"
 Graphs = "1"
 Makie = "0.24"
