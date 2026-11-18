@@ -251,7 +251,10 @@
         while maximum(abs, C) <= big(2)^62 && length(word) < 60
             greens = [k for k in 1:5 if all(>=(0), view(C, :, k))]
             @test !isempty(greens)
-            k = argmax(Dict(k => maximum(abs, view(C, :, k)) for k in greens))
+            # Ties go to the highest index; a Dict-based argmax depends on
+            # hash order, which changed in Julia 1.13 and broke the growth.
+            m = [maximum(abs, view(C, :, k)) for k in greens]
+            k = greens[findlast(==(maximum(m)), m)]
             push!(word, k)
             push!(expected, C[:, k])
             B, C = ClusterAlgebras._mutate_matrix(B, k),
